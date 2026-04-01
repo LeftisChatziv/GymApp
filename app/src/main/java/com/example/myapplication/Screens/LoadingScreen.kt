@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.Screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background

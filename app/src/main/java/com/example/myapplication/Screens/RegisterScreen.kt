@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.Screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,9 +17,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
-fun LoginScreen(
-    onGoToRegister: () -> Unit,
-    onLoginSuccess: () -> Unit
+fun RegisterScreen(
+    onGoToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -28,9 +27,9 @@ fun LoginScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Welcome Back 💪", color = Color.White, fontSize = 28.sp)
+                Text("Create Account 💪", color = Color.White, fontSize = 28.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("Login to continue", color = Color.LightGray, fontSize = 15.sp)
+                Text("Register to start your fitness journey", color = Color.LightGray, fontSize = 15.sp)
                 Spacer(Modifier.height(30.dp))
 
                 OutlinedTextField(
@@ -64,13 +63,13 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        Firebase.auth.signInWithEmailAndPassword(email, password)
+                        Firebase.auth.createUserWithEmailAndPassword(email, password)
                             .addOnCompleteListener { task ->
                                 if (task.isSuccessful) {
                                     errorMessage = ""
-                                    onLoginSuccess()
+                                    onGoToLogin()
                                 } else {
-                                    errorMessage = task.exception?.message ?: "Login failed"
+                                    errorMessage = task.exception?.message ?: "Registration failed"
                                 }
                             }
                     },
@@ -78,15 +77,15 @@ fun LoginScreen(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
-                    Text("Login", fontSize = 18.sp)
+                    Text("Register", fontSize = 18.sp)
                 }
 
                 Spacer(Modifier.height(24.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Don't have an account? ", color = Color.LightGray, fontSize = 15.sp)
-                    Text("Register", color = Color(0xFF66BB6A), fontSize = 15.sp, modifier = Modifier.clickable {
-                        onGoToRegister()
+                    Text("Already have an account? ", color = Color.LightGray, fontSize = 15.sp)
+                    Text("Login", color = Color(0xFF66BB6A), fontSize = 15.sp, modifier = Modifier.clickable {
+                        onGoToLogin()
                     })
                 }
             }

@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.Screens
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -7,8 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
