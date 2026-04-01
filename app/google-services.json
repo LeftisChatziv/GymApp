@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "752747354180",
+    "project_id": "lightweight-base",
+    "storage_bucket": "lightweight-base.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752747354180:android:a825155304820961594411",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBj1kttvxJ3x65B1VOVbmrY1_Hq3DGYcGw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
