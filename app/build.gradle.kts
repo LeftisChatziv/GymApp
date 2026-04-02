@@ -6,11 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.myapplication"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.myapplication"
@@ -40,6 +36,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3" // ή η τελευταία διαθέσιμη για Compose
+    }
 }
 
 dependencies {
@@ -53,9 +53,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.2.0")) // Firebase BoM
-    implementation("com.google.firebase:firebase-auth-ktx") // Firebase Authentication
+    // Firebase (BoM)
+    implementation(platform("com.google.firebase:firebase-bom:32.2.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
     // Testing
     testImplementation(libs.junit)

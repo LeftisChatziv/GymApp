@@ -1,6 +1,7 @@
 package com.example.myapplication.Screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,19 +16,40 @@ import com.google.firebase.ktx.Firebase
 fun HomeScreen(
     onLogout: () -> Unit
 ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🏋 Welcome to LightWeight!", color = Color.White, fontSize = 28.sp)
-                Spacer(Modifier.height(30.dp))
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFF121212)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🏋 Welcome to LightWeight!",
+                    color = Color.White,
+                    fontSize = 28.sp
+                )
+                Spacer(modifier = Modifier.height(30.dp))
                 Button(
                     onClick = {
                         Firebase.auth.signOut()
                         onLogout()
                     },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
-                    Text("Logout", fontSize = 18.sp)
+                    Text(
+                        text = "Logout",
+                        fontSize = 18.sp
+                    )
                 }
             }
         }

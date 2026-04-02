@@ -26,12 +26,25 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf("") }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Welcome Back 💪", color = Color.White, fontSize = 28.sp)
-                Spacer(Modifier.height(12.dp))
-                Text("Login to continue", color = Color.LightGray, fontSize = 15.sp)
-                Spacer(Modifier.height(30.dp))
+                Text(
+                    text = "Welcome Back 💪",
+                    color = Color.White,
+                    fontSize = 28.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Login to continue",
+                    color = Color.LightGray,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(30.dp))
 
                 OutlinedTextField(
                     value = email,
@@ -43,7 +56,7 @@ fun LoginScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = password,
@@ -52,14 +65,19 @@ fun LoginScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 if (errorMessage.isNotEmpty()) {
-                    Text(errorMessage, color = Color.Red, fontSize = 14.sp)
-                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 Button(
@@ -74,20 +92,29 @@ fun LoginScreen(
                                 }
                             }
                     },
-                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
                     Text("Login", fontSize = 18.sp)
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Don't have an account? ", color = Color.LightGray, fontSize = 15.sp)
-                    Text("Register", color = Color(0xFF66BB6A), fontSize = 15.sp, modifier = Modifier.clickable {
-                        onGoToRegister()
-                    })
+                    Text(
+                        "Don't have an account? ",
+                        color = Color.LightGray,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        "Register",
+                        color = Color(0xFF66BB6A),
+                        fontSize = 15.sp,
+                        modifier = Modifier.clickable { onGoToRegister() }
+                    )
                 }
             }
         }

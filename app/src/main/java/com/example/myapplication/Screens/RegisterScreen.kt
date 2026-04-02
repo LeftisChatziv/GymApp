@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.firestore.ktx.firestore
 
 @Composable
 fun RegisterScreen(
@@ -25,11 +26,24 @@ fun RegisterScreen(
     var errorMessage by remember { mutableStateOf("") }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Create Account 💪", color = Color.White, fontSize = 28.sp)
+                Text(
+                    text = "Create Account 💪",
+                    color = Color.White,
+                    fontSize = 28.sp
+                )
                 Spacer(Modifier.height(12.dp))
-                Text("Register to start your fitness journey", color = Color.LightGray, fontSize = 15.sp)
+                Text(
+                    text = "Register to start your fitness journey",
+                    color = Color.LightGray,
+                    fontSize = 15.sp
+                )
                 Spacer(Modifier.height(30.dp))
 
                 OutlinedTextField(
@@ -51,13 +65,18 @@ fun RegisterScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(Modifier.height(16.dp))
 
                 if (errorMessage.isNotEmpty()) {
-                    Text(errorMessage, color = Color.Red, fontSize = 14.sp)
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 14.sp
+                    )
                     Spacer(Modifier.height(16.dp))
                 }
 
@@ -67,13 +86,38 @@ fun RegisterScreen(
                             .addOnCompleteListener { task ->
                                 if (task.isSuccessful) {
                                     errorMessage = ""
-                                    onGoToLogin()
+
+                                    // Δημιουργία του χρήστη στο Firestore
+                                    val uid = Firebase.auth.currentUser?.uid
+                                    val userMap = hashMapOf(
+                                        "UID" to uid,
+                                        "Name" to "",
+                                        "ProfilePicUrl" to "",
+                                        "created" to com.google.firebase.Timestamp.now(),
+                                        "email" to email
+                                    )
+
+                                    uid?.let {
+                                        Firebase.firestore.collection("Users")
+                                            .document(it)
+                                            .set(userMap)
+                                            .addOnSuccessListener {
+                                                // Ο χρήστης αποθηκεύτηκε επιτυχώς
+                                                onGoToLogin()
+                                            }
+                                            .addOnFailureListener { e ->
+                                                errorMessage = e.message ?: "Failed to save user"
+                                            }
+                                    }
+
                                 } else {
                                     errorMessage = task.exception?.message ?: "Registration failed"
                                 }
                             }
                     },
-                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
@@ -83,10 +127,19 @@ fun RegisterScreen(
                 Spacer(Modifier.height(24.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Already have an account? ", color = Color.LightGray, fontSize = 15.sp)
-                    Text("Login", color = Color(0xFF66BB6A), fontSize = 15.sp, modifier = Modifier.clickable {
-                        onGoToLogin()
-                    })
+                    Text(
+                        "Already have an account? ",
+                        color = Color.LightGray,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        "Login",
+                        color = Color(0xFF66BB6A),
+                        fontSize = 15.sp,
+                        modifier = Modifier.clickable {
+                            onGoToLogin()
+                        }
+                    )
                 }
             }
         }
