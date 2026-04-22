@@ -94,15 +94,19 @@ fun RegisterScreen(
                                         "Name" to "",
                                         "ProfilePicUrl" to "",
                                         "created" to com.google.firebase.Timestamp.now(),
-                                        "email" to email
+                                        "email" to email,
+                                        "rank" to "Beginner",
+                                        "streak" to 0,
+                                        "totalWorkouts" to 0
                                     )
 
                                     uid?.let {
                                         Firebase.firestore.collection("Users")
                                             .document(it)
+                                            .collection("profile")
+                                            .document("id")
                                             .set(userMap)
                                             .addOnSuccessListener {
-                                                // Ο χρήστης αποθηκεύτηκε επιτυχώς
                                                 onGoToLogin()
                                             }
                                             .addOnFailureListener { e ->

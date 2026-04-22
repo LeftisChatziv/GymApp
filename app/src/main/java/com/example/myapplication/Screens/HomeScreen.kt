@@ -18,12 +18,32 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.example.myapplication.R
+import com.google.firebase.firestore.ktx.firestore
+import androidx.compose.runtime.*
 
 @Composable
 fun HomeScreen(onLogout: () -> Unit) {
     val currentUser = remember { Firebase.auth.currentUser }
     val userEmail = currentUser?.email ?: "User"
+    var rank by remember { mutableStateOf("Loading...") }
 
+    val uid = currentUser?.uid
+
+    LaunchedEffect(uid) {
+        uid?.let {
+            Firebase.firestore.collection("Users")
+                .document(it)
+                .collection("profile")
+                .document("id")
+                .get()
+                .addOnSuccessListener { document ->
+                    rank = document.getString("rank") ?: "Beginner"
+                }
+                .addOnFailureListener {
+                    rank = "Error"
+                }
+        }
+    }
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFF0F1115)
@@ -49,7 +69,14 @@ fun HomeScreen(onLogout: () -> Unit) {
                 color = Color.LightGray,
                 fontSize = 16.sp
             )
+            Spacer(modifier = Modifier.height(4.dp))
 
+            Text(
+                text = "Rank: $rank 🏆",
+                color = Color(0xFF66BB6A),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
             Spacer(modifier = Modifier.height(24.dp))
 
             // Weekly Activity Card
