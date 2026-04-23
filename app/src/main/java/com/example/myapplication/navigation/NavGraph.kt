@@ -2,13 +2,11 @@ package com.example.myapplication.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.*
 import com.example.myapplication.Screens.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavGraph(
@@ -17,12 +15,8 @@ fun NavGraph(
 ) {
 
     val navController = rememberNavController()
-
-    val currentRoute = navController
-        .currentBackStackEntryAsState()
-        .value
-        ?.destination
-        ?.route
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     val noBottomBarScreens = listOf("login", "register")
 
@@ -32,17 +26,8 @@ fun NavGraph(
             TopAppBar(
                 title = { Text("My Gym App") },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            onToggleTheme(!isDarkTheme)
-                        }
-                    ) {
-                        Icon(
-                            imageVector =
-                                if (isDarkTheme) Icons.Default.LightMode
-                                else Icons.Default.DarkMode,
-                            contentDescription = "toggle theme"
-                        )
+                    IconButton(onClick = { onToggleTheme(!isDarkTheme) }) {
+                        Text(if (isDarkTheme) "☀️" else "🌙")
                     }
                 }
             )
@@ -54,8 +39,11 @@ fun NavGraph(
                     selectedItem = currentRoute ?: "home",
                     onItemSelected = { route ->
                         navController.navigate(route) {
-                            popUpTo(navController.graph.startDestinationId)
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -91,7 +79,7 @@ fun NavGraph(
                 HomeScreen(
                     onLogout = {
                         navController.navigate("login") {
-                            popUpTo("home") { inclusive = true }
+                            popUpTo(0)
                         }
                     }
                 )
@@ -104,6 +92,3 @@ fun NavGraph(
         }
     }
 }
-@Composable fun ProfileScreen() { TODO() }
-@Composable fun ProgressScreen() { TODO() }
-class ProgramScreen

@@ -1,21 +1,16 @@
 package com.example.myapplication.Screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import androidx.compose.ui.res.painterResource
 import com.example.myapplication.R
 
 @Composable
@@ -23,31 +18,38 @@ fun HomeScreen(
     onLogout: () -> Unit
 ) {
 
-    val currentUser = remember { Firebase.auth.currentUser }
+    val auth = FirebaseAuth.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
+
+    val currentUser = auth.currentUser
     val userEmail = currentUser?.email ?: "User"
+    val uid = currentUser?.uid
 
     var rank by remember { mutableStateOf("Loading...") }
 
-    val uid = currentUser?.uid
+    val colors = MaterialTheme.colorScheme
 
     LaunchedEffect(uid) {
-        uid?.let {
-            Firebase.firestore.collection("Users")
-                .document(it)
-                .collection("profile")
-                .document("id")
-                .get()
-                .addOnSuccessListener { document ->
-                    rank = document.getString("rank") ?: "Beginner"
-                }
-                .addOnFailureListener {
-                    rank = "Error"
-                }
+        if (uid != null) {
+            try {
+                val snapshot = firestore
+                    .collection("Users")
+                    .document(uid)
+                    .collection("profile")
+                    .document("id")
+                    .get()
+                    .await()
+
+                rank = snapshot.getString("rank") ?: "Beginner"
+
+            } catch (e: Exception) {
+                rank = "Error"
+            }
         }
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = colors.background
     ) { padding ->
 
         Column(
@@ -57,59 +59,66 @@ fun HomeScreen(
                 .padding(20.dp)
         ) {
 
+            // ================= HEADER =================
             Text(
                 "🏠 Home",
-                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 30.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = colors.onBackground
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
 
             Text(
                 "Welcome back, $userEmail",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                color = colors.onSurfaceVariant
             )
 
             Text(
                 "Rank: $rank 🏆",
-                color = MaterialTheme.colorScheme.primary
+                color = colors.primary,
+                fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
+            // ================= DASHBOARD CARD =================
             DashboardCard(
                 title = "Weekly Activity",
                 subtitle = "You completed 4 workouts 💪",
                 icon = painterResource(id = R.drawable.exercise)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 "Monthly Stats",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 22.sp
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onBackground
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+
                 StatCard(
                     modifier = Modifier.weight(1f),
                     title = "12",
                     subtitle = "Workouts",
                     icon = painterResource(id = R.drawable.trendingup)
                 )
+
                 StatCard(
                     modifier = Modifier.weight(1f),
                     title = "540",
                     subtitle = "Minutes",
                     icon = painterResource(id = R.drawable.schedule)
                 )
+
                 StatCard(
                     modifier = Modifier.weight(1f),
                     title = "3250",
@@ -118,15 +127,16 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 "Next Workout",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 22.sp
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onBackground
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             NextWorkoutCard(
                 workoutTitle = "Upper Body Strength",
@@ -134,19 +144,19 @@ fun HomeScreen(
                 time = "18:30"
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
 
             Button(
                 onClick = {
-                    Firebase.auth.signOut()
+                    auth.signOut()
                     onLogout()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(55.dp),
-                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary
                 )
             ) {
                 Text("Logout")

@@ -7,8 +7,8 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    // Επιτρέπει μόνο repositories από εδώ, όχι από τα build.gradle
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
     repositories {
         google()
         mavenCentral()

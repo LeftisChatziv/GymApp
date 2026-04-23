@@ -8,118 +8,89 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.viewmodel.ExerciseViewModel
 
 @Composable
-fun ExercisesScreen() {
+fun ExercisesScreen(
+    viewModel: ExerciseViewModel = viewModel()
+) {
 
     var search by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Όλα") }
 
     val filters = listOf("Όλα", "Σώμα", "Βαράκια", "Όργανα")
 
-    val exercises = listOf(
-        "Push-ups (Κάμψεις)",
-        "Bench Press",
-        "Pull-ups (Πουλιά)",
-        "Squats (Καθίσματα)"
-    )
+    val exercises by viewModel.exercises.collectAsState(initial = emptyList())
+
+    val filteredExercises = remember(exercises, search) {
+        exercises.filter {
+            it.name.contains(search, ignoreCase = true)
+        }
+    }
+
+    val colors = MaterialTheme.colorScheme
+
+    LaunchedEffect(exercises) {
+        android.util.Log.d("EXERCISES_DEBUG", "SIZE = ${exercises.size}")
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F7FB))
+            .background(colors.background)   // 🔥 GLOBAL
             .padding(16.dp)
     ) {
 
         Text(
             text = "Ασκήσεις",
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.onBackground,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // SEARCH BAR
         OutlinedTextField(
             value = search,
             onValueChange = { search = it },
             placeholder = { Text("Αναζήτηση άσκησης...") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colors.primary,
+                unfocusedBorderColor = colors.onSurfaceVariant,
+                cursorColor = colors.primary
+            )
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // FILTER CHIPS
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
             filters.forEach { filter ->
                 FilterChip(
                     selected = selectedFilter == filter,
                     onClick = { selectedFilter = filter },
-                    label = { Text(filter) }
+                    label = { Text(filter) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = colors.primary,
+                        selectedLabelColor = colors.onPrimary
+                    )
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // LIST
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(exercises) { exercise ->
+            items(filteredExercises) { exercise ->
                 ExerciseCard(exercise)
             }
-        }
-    }
-}
-@Composable
-fun ExerciseCard(title: String) {
-
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-
-        Column(modifier = Modifier.padding(16.dp)) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(title, fontWeight = FontWeight.Bold)
-
-                AssistChip(
-                    onClick = {},
-                    label = { Text("Σώμα") }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text("Στήθος", fontWeight = FontWeight.Medium)
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            LinearProgressIndicator(
-                progress = 0.6f,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Text("Στήθος 60%", style = MaterialTheme.typography.labelSmall)
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            LinearProgressIndicator(
-                progress = 0.3f,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Text("Τρικέφαλος 30%", style = MaterialTheme.typography.labelSmall)
         }
     }
 }

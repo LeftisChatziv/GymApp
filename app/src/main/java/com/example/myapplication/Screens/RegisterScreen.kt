@@ -13,37 +13,51 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.Timestamp
 
 @Composable
 fun RegisterScreen(
     onGoToLogin: () -> Unit
 ) {
+
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseFirestore.getInstance()
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFF121212)
+    ) {
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
+
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
                 Text(
                     text = "Create Account 💪",
                     color = Color.White,
                     fontSize = 28.sp
                 )
+
                 Spacer(Modifier.height(12.dp))
+
                 Text(
                     text = "Register to start your fitness journey",
                     color = Color.LightGray,
                     fontSize = 15.sp
                 )
+
                 Spacer(Modifier.height(30.dp))
 
                 OutlinedTextField(
@@ -81,61 +95,74 @@ fun RegisterScreen(
                 }
 
                 Button(
+                    enabled = !loading,
                     onClick = {
-                        Firebase.auth.createUserWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    errorMessage = ""
 
-                                    // Δημιουργία του χρήστη στο Firestore
-                                    val uid = Firebase.auth.currentUser?.uid
-                                    val userMap = hashMapOf(
-                                        "UID" to uid,
-                                        "Name" to "",
-                                        "ProfilePicUrl" to "",
-                                        "created" to com.google.firebase.Timestamp.now(),
-                                        "email" to email,
-                                        "rank" to "Beginner",
-                                        "streak" to 0,
-                                        "totalWorkouts" to 0
-                                    )
+                        loading = true
+                        errorMessage = ""
 
-                                    uid?.let {
-                                        Firebase.firestore.collection("Users")
-                                            .document(it)
-                                            .collection("profile")
-                                            .document("id")
-                                            .set(userMap)
-                                            .addOnSuccessListener {
-                                                onGoToLogin()
-                                            }
-                                            .addOnFailureListener { e ->
-                                                errorMessage = e.message ?: "Failed to save user"
-                                            }
-                                    }
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .addOnSuccessListener { result ->
 
-                                } else {
-                                    errorMessage = task.exception?.message ?: "Registration failed"
+                                val uid = result.user?.uid
+
+                                if (uid == null) {
+                                    loading = false
+                                    errorMessage = "User ID error"
+                                    return@addOnSuccessListener
                                 }
+
+                                val userMap = hashMapOf(
+                                    "UID" to uid,
+                                    "Name" to "",
+                                    "ProfilePicUrl" to "",
+                                    "created" to Timestamp.now(),
+                                    "email" to email,
+                                    "rank" to "Beginner",
+                                    "streak" to 0,
+                                    "totalWorkouts" to 0
+                                )
+
+                                db.collection("Users")
+                                    .document(uid)
+                                    .collection("profile")
+                                    .document("id")
+                                    .set(userMap)
+                                    .addOnSuccessListener {
+                                        loading = false
+                                        onGoToLogin()
+                                    }
+                                    .addOnFailureListener { e ->
+                                        loading = false
+                                        errorMessage = e.message ?: "Failed to save user"
+                                    }
+                            }
+                            .addOnFailureListener { e ->
+                                loading = false
+                                errorMessage = e.message ?: "Registration failed"
                             }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(55.dp),
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E7D32)
+                    )
                 ) {
-                    Text("Register", fontSize = 18.sp)
+                    Text(if (loading) "Loading..." else "Register", fontSize = 18.sp)
                 }
 
                 Spacer(Modifier.height(24.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+
                     Text(
                         "Already have an account? ",
                         color = Color.LightGray,
                         fontSize = 15.sp
                     )
+
                     Text(
                         "Login",
                         color = Color(0xFF66BB6A),
