@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ExerciseDao {
 
-    // 🔥 LIVE DATA (Flow - για UI)
+    // 🔥 LIVE DATA (ALL)
     @Query("SELECT * FROM exercises")
     fun getAllExercisesFlow(): Flow<List<Exercise>>
 
@@ -15,19 +15,27 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises")
     suspend fun getAllExercises(): List<Exercise>
 
-    // ➕ Insert single
+    // ➕ INSERT single
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(exercise: Exercise)
 
-    // ➕ Insert list
+    // ➕ INSERT list
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(exercises: List<Exercise>)
 
-    // 🔍 Filter by program
+    // 🔍 FILTER by program
     @Query("SELECT * FROM exercises WHERE programId = :programId")
-    suspend fun getExercisesByProgram(programId: Int): List<Exercise>
+    fun getExercisesByProgramFlow(programId: Int): Flow<List<Exercise>>
 
-    // ❌ Delete
+    // 🔥 NEW: FILTER by category (Σώμα / Βαράκια / Όργανα)
+    @Query("SELECT * FROM exercises WHERE category = :category")
+    fun getExercisesByCategoryFlow(category: String): Flow<List<Exercise>>
+
+    // ✏️ UPDATE
+    @Update
+    suspend fun updateExercise(exercise: Exercise)
+
+    // ❌ DELETE
     @Delete
     suspend fun delete(exercise: Exercise)
 }

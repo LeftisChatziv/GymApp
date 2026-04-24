@@ -1,9 +1,6 @@
 package com.example.myapplication.data.local.entity
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
+import androidx.room.*
 import com.example.myapplication.data.local.converter.MuscleConverters
 
 @Entity(
@@ -15,7 +12,8 @@ import com.example.myapplication.data.local.converter.MuscleConverters
             childColumns = ["programId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index("programId")]
 )
 @TypeConverters(MuscleConverters::class)
 data class Exercise(
@@ -24,6 +22,9 @@ data class Exercise(
     val id: Int = 0,
 
     val name: String,
+
+    // 🔥 ΝΕΟ: category (Σώμα / Βαράκια / Όργανα)
+    val category: String,
 
     val muscleGroups: List<MuscleActivation>,
 

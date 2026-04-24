@@ -25,22 +25,26 @@ fun ExercisesScreen(
 
     val exercises by viewModel.exercises.collectAsState(initial = emptyList())
 
-    val filteredExercises = remember(exercises, search) {
-        exercises.filter {
-            it.name.contains(search, ignoreCase = true)
+    // 🔥 FIX: search + category filter
+    val filteredExercises = remember(exercises, search, selectedFilter) {
+        exercises.filter { exercise ->
+
+            val matchesSearch =
+                exercise.name.contains(search, ignoreCase = true)
+
+            val matchesCategory =
+                selectedFilter == "Όλα" || exercise.category == selectedFilter
+
+            matchesSearch && matchesCategory
         }
     }
 
     val colors = MaterialTheme.colorScheme
 
-    LaunchedEffect(exercises) {
-        android.util.Log.d("EXERCISES_DEBUG", "SIZE = ${exercises.size}")
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)   // 🔥 GLOBAL
+            .background(colors.background)
             .padding(16.dp)
     ) {
 
@@ -68,9 +72,11 @@ fun ExercisesScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // 🔥 FILTER CHIPS (WORKING)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 
             filters.forEach { filter ->
+
                 FilterChip(
                     selected = selectedFilter == filter,
                     onClick = { selectedFilter = filter },
@@ -85,10 +91,13 @@ fun ExercisesScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 🔥 LIST
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
             items(filteredExercises) { exercise ->
+
                 ExerciseCard(exercise)
             }
         }
