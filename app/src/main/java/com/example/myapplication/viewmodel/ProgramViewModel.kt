@@ -8,7 +8,6 @@ import com.example.myapplication.data.local.entity.Program
 import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
 import kotlinx.coroutines.launch
 
-// 🔥 DTO από UI
 data class ExercisePlan(
     val exerciseId: Int,
     val sets: Int,
@@ -19,7 +18,9 @@ data class ExercisePlan(
 class ProgramViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
-    private val programDao = db.programDao()
+    private val dao = db.programDao()
+
+    val programs = dao.getProgramsWithExercises()
 
     fun createProgram(
         title: String,
@@ -28,22 +29,21 @@ class ProgramViewModel(application: Application) : AndroidViewModel(application)
     ) {
         viewModelScope.launch {
 
-            // 🔥 Μετατροπή days -> String (για αποθήκευση)
             val daysString = days.joinToString(",")
 
-            val programId = programDao.insertProgram(
+            val programId = dao.insertProgram(
                 Program(
                     name = title,
+                    difficulty = "Easy", // ή dropdown μετά
                     days = daysString
                 )
             ).toInt()
 
-            // 🔥 Insert relation (Program - Exercises)
-            exercises.forEach {
-                programDao.insertProgramExerciseCrossRef(
+            exercises.forEach { plan ->
+                dao.insertProgramExerciseCrossRef(
                     ProgramExerciseCrossRef(
                         programId = programId,
-                        exerciseId = it.exerciseId
+                        exerciseId = plan.exerciseId
                     )
                 )
             }

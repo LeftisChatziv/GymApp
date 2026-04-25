@@ -1,3 +1,4 @@
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -9,15 +10,16 @@ plugins {
 
 android {
     namespace = "com.example.myapplication"
-    compileSdk = 36
+    compileSdk = 35   // ✅ FIX
 
     defaultConfig {
         applicationId = "com.example.myapplication"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35   // ✅ FIX
         versionCode = 1
         versionName = "1.0"
     }
+
 
     buildFeatures {
         compose = true
@@ -43,6 +45,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.0")
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.androidx.compose.runtime)
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
