@@ -12,8 +12,6 @@ interface WorkoutHistoryDao {
     @Query("SELECT * FROM workout_history")
     suspend fun getAll(): List<WorkoutHistory>
 
-    @Query("SELECT * FROM workout_history WHERE programId = :programId")
-    suspend fun getByProgram(programId: Int): List<WorkoutHistory>
 
     @Delete
     suspend fun delete(history: WorkoutHistory)

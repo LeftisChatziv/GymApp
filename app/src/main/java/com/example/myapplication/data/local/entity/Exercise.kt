@@ -1,20 +1,11 @@
 package com.example.myapplication.data.local.entity
 
-import androidx.room.*
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
 import com.example.myapplication.data.local.converter.MuscleConverters
 
-@Entity(
-    tableName = "exercises",
-    foreignKeys = [
-        ForeignKey(
-            entity = Program::class,
-            parentColumns = ["id"],
-            childColumns = ["programId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("programId")]
-)
+@Entity(tableName = "exercises")
 @TypeConverters(MuscleConverters::class)
 data class Exercise(
 
@@ -23,12 +14,15 @@ data class Exercise(
 
     val name: String,
 
-    // 🔥 ΝΕΟ: category (Σώμα / Βαράκια / Όργανα)
-    val category: String,
+    // 🏷️ Category
+    val category: String, // Σώμα / Βαράκια / Όργανα
 
+    // 💪 Μυϊκές ομάδες
     val muscleGroups: List<MuscleActivation>,
 
+    // 📝 Περιγραφή
     val description: String,
 
-    val programId: Int
+    // 🔥 Difficulty αντί για programId
+    val difficulty: String // "Easy" ή "Hard"
 )

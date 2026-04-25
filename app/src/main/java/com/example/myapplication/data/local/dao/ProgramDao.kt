@@ -2,21 +2,24 @@ package com.example.myapplication.data.local.dao
 
 import androidx.room.*
 import com.example.myapplication.data.local.entity.Program
+import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
 import com.example.myapplication.data.local.relation.ProgramWithExercises
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface AppDao {
+interface ProgramDao {
 
-    // ➕ INSERT
+    // ➕ INSERT PROGRAM
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertProgram(program: Program)
+    suspend fun insertProgram(program: Program): Long
 
-    // 📖 GET ALL (one-time)
-    @Query("SELECT * FROM programs")
-    suspend fun getAllPrograms(): List<Program>
+    // ➕ INSERT RELATION (🔥 ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProgramExerciseCrossRef(
+        crossRef: ProgramExerciseCrossRef
+    )
 
-    // 🔥 LIVE DATA (για UI)
+    // 📖 GET ALL PROGRAMS (LIVE)
     @Query("SELECT * FROM programs")
     fun getAllProgramsFlow(): Flow<List<Program>>
 
@@ -28,8 +31,8 @@ interface AppDao {
     @Delete
     suspend fun deleteProgram(program: Program)
 
-    // 🔗 RELATION (Program + Exercises)
+    // 🔗 MANY-TO-MANY RELATION
     @Transaction
     @Query("SELECT * FROM programs")
-    suspend fun getProgramsWithExercises(): List<ProgramWithExercises>
+    fun getProgramsWithExercises(): Flow<List<ProgramWithExercises>>
 }

@@ -12,30 +12,43 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
-
 @Composable
 fun ExercisesScreen(
     viewModel: ExerciseViewModel = viewModel()
 ) {
 
     var search by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("Όλα") }
 
-    val filters = listOf("Όλα", "Σώμα", "Βαράκια", "Όργανα")
+    // 🔥 2 ΑΝΕΞΑΡΤΗΤΑ FILTERS
+    var selectedCategory by remember { mutableStateOf("Όλα") }
+    var selectedDifficulty by remember { mutableStateOf("Όλα") }
+
+    val categories = listOf("Όλα", "Σώμα", "Βαράκια", "Όργανα")
+    val difficulties = listOf("Όλα", "Easy", "Hard")
 
     val exercises by viewModel.exercises.collectAsState(initial = emptyList())
 
-    // 🔥 FIX: search + category filter
-    val filteredExercises = remember(exercises, search, selectedFilter) {
+    // 🔥 COMBINED FILTER
+    val filteredExercises = remember(
+        exercises,
+        search,
+        selectedCategory,
+        selectedDifficulty
+    ) {
         exercises.filter { exercise ->
 
             val matchesSearch =
                 exercise.name.contains(search, ignoreCase = true)
 
             val matchesCategory =
-                selectedFilter == "Όλα" || exercise.category == selectedFilter
+                selectedCategory == "Όλα" ||
+                        exercise.category == selectedCategory
 
-            matchesSearch && matchesCategory
+            val matchesDifficulty =
+                selectedDifficulty == "Όλα" ||
+                        exercise.difficulty == selectedDifficulty
+
+            matchesSearch && matchesCategory && matchesDifficulty
         }
     }
 
@@ -51,53 +64,53 @@ fun ExercisesScreen(
         Text(
             text = "Ασκήσεις",
             style = MaterialTheme.typography.titleLarge,
-            color = colors.onBackground,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // 🔍 SEARCH
         OutlinedTextField(
             value = search,
             onValueChange = { search = it },
-            placeholder = { Text("Αναζήτηση άσκησης...") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.primary,
-                unfocusedBorderColor = colors.onSurfaceVariant,
-                cursorColor = colors.primary
-            )
+            placeholder = { Text("Αναζήτηση...") },
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 🔥 FILTER CHIPS (WORKING)
+        // 🏷️ CATEGORY FILTER
+        Text("Κατηγορία")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-
-            filters.forEach { filter ->
-
+            categories.forEach { cat ->
                 FilterChip(
-                    selected = selectedFilter == filter,
-                    onClick = { selectedFilter = filter },
-                    label = { Text(filter) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = colors.primary,
-                        selectedLabelColor = colors.onPrimary
-                    )
+                    selected = selectedCategory == cat,
+                    onClick = { selectedCategory = cat },
+                    label = { Text(cat) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 🔥 DIFFICULTY FILTER (ΞΕΧΩΡΙΣΤΟ)
+        Text("Δυσκολία")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            difficulties.forEach { diff ->
+                FilterChip(
+                    selected = selectedDifficulty == diff,
+                    onClick = { selectedDifficulty = diff },
+                    label = { Text(diff) }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 🔥 LIST
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             items(filteredExercises) { exercise ->
-
                 ExerciseCard(exercise)
             }
         }

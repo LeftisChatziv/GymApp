@@ -23,11 +23,10 @@ interface ExerciseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(exercises: List<Exercise>)
 
-    // 🔍 FILTER by program
-    @Query("SELECT * FROM exercises WHERE programId = :programId")
-    fun getExercisesByProgramFlow(programId: Int): Flow<List<Exercise>>
+    // 🔍 FILTER by programId
 
-    // 🔥 NEW: FILTER by category (Σώμα / Βαράκια / Όργανα)
+
+    // 🔥 FILTER by category (Σώμα / Βαράκια / Όργανα)
     @Query("SELECT * FROM exercises WHERE category = :category")
     fun getExercisesByCategoryFlow(category: String): Flow<List<Exercise>>
 
