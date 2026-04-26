@@ -1,4 +1,4 @@
-package com.example.myapplication.Screens
+package com.example.myapplication.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -6,34 +6,31 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.local.entity.Exercise
 import com.example.myapplication.data.local.relation.ProgramWithExercises
-import com.example.myapplication.viewmodel.ExerciseViewModel
-import com.example.myapplication.viewmodel.ProgramViewModel
-import com.example.myapplication.viewmodel.ExercisePlan
+import com.example.myapplication.viewmodel.*
+import com.example.myapplication.Screens.WorkoutScreen
 
 data class ExerciseConfig(
     val exercise: Exercise,
-    var sets: Int = 3,
-    var reps: Int = 10,
-    var weight: Int = 0
+    val sets: Int,
+    val reps: Int,
+    val weight: Int
 )
 
-// 🔥 helper για ελληνικά
-fun mapDay(day: String): String {
-    return when (day) {
-        "Mon" -> "Δε"
-        "Tue" -> "Τρ"
-        "Wed" -> "Τε"
-        "Thu" -> "Πε"
-        "Fri" -> "Πα"
-        "Sat" -> "Σα"
-        "Sun" -> "Κυ"
-        else -> day
-    }
+fun mapDay(day: String): String = when (day) {
+    "Mon" -> "Δε"
+    "Tue" -> "Τρ"
+    "Wed" -> "Τε"
+    "Thu" -> "Πε"
+    "Fri" -> "Πα"
+    "Sat" -> "Σα"
+    "Sun" -> "Κυ"
+    else -> day
 }
 
 @Composable
@@ -49,31 +46,52 @@ fun ProgramScreen(
     var selectedProgram by remember { mutableStateOf<ProgramWithExercises?>(null) }
     var startWorkout by remember { mutableStateOf(false) }
 
-    var title by remember { mutableStateOf("") }
-
-    val daysOfWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+    var title by rememberSaveable { mutableStateOf("") }
     val selectedDays = remember { mutableStateListOf<String>() }
-    val selectedExercises = remember { mutableStateListOf<ExerciseConfig>() }
 
-    // 🔥 WORKOUT
-    if (startWorkout && selectedProgram != null) {
-        WorkoutScreen(selectedProgram!!)
-        return
+    val selectedExercises = remember {
+        mutableStateMapOf<Int, ExerciseConfig>()
     }
 
-    // 🔥 DETAILS
-    if (selectedProgram != null) {
+    // =====================
+    // PROGRAM DETAILS SCREEN
+    // =====================
+    selectedProgram?.let { program ->
+
+        if (startWorkout) {
+            WorkoutScreen(program)
+            return
+        }
+
         ProgramDetailsScreen(
-            program = selectedProgram!!,
+            program = program,
+            exercisesPool = exercises,
+
             onStart = { startWorkout = true },
+
             onBack = {
                 selectedProgram = null
                 startWorkout = false
+                programViewModel.loadPrograms()
+            },
+
+            onDeleteProgram = {
+                programViewModel.deleteProgram(program.program)
+                selectedProgram = null
+            },
+
+            onSaveAll = { updatedList ->
+                // 🔥 εδώ θα το συνδέσουμε σωστά με Room save later
+                println("SAVE ALL: $updatedList")
             }
         )
+
         return
     }
 
+    // =====================
+    // MAIN SCREEN
+    // =====================
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
@@ -93,12 +111,13 @@ fun ProgramScreen(
             Spacer(Modifier.height(12.dp))
 
             LazyColumn {
+
                 items(programs) { program ->
 
                     val prettyDays = program.program.days
                         .split(",")
-                        .map { mapDay(it) }
-                        .joinToString(" • ")
+                        .filter { it.isNotBlank() }
+                        .joinToString(" • ") { mapDay(it) }
 
                     Card(
                         modifier = Modifier
@@ -109,19 +128,8 @@ fun ProgramScreen(
                             }
                     ) {
                         Column(Modifier.padding(16.dp)) {
-
-                            Text(
-                                program.program.name,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-
-                            Spacer(Modifier.height(4.dp))
-
+                            Text(program.program.name)
                             Text("Exercises: ${program.exercises.size}")
-
-                            Spacer(Modifier.height(4.dp))
-
-                            // ✅ FIXED
                             Text("Days: $prettyDays")
                         }
                     }
@@ -130,7 +138,9 @@ fun ProgramScreen(
         }
     }
 
-    // 🔥 CREATE DIALOG
+    // =====================
+    // CREATE PROGRAM DIALOG
+    // =====================
     if (showDialog) {
 
         AlertDialog(
@@ -139,14 +149,17 @@ fun ProgramScreen(
 
                 TextButton(onClick = {
 
-                    val plan = selectedExercises.map {
-                        ExercisePlan(
-                            exerciseId = it.exercise.id,
-                            sets = it.sets,
-                            reps = it.reps,
-                            weight = it.weight
-                        )
-                    }
+                    val plan = selectedExercises.values
+                        .toList()
+                        .mapIndexed { index, it ->
+                            ExercisePlan(
+                                exerciseId = it.exercise.id,
+                                sets = it.sets,
+                                reps = it.reps,
+                                weight = it.weight,
+                                position = index
+                            )
+                        }
 
                     programViewModel.createProgram(
                         title = title,
@@ -154,10 +167,12 @@ fun ProgramScreen(
                         exercises = plan
                     )
 
+                    // RESET
                     showDialog = false
                     title = ""
                     selectedDays.clear()
                     selectedExercises.clear()
+                    programViewModel.loadPrograms()
 
                 }) {
                     Text("Save")
@@ -181,98 +196,43 @@ fun ProgramScreen(
 
                     Spacer(Modifier.height(10.dp))
 
-                    Text("Select Days")
+                    Row {
+                        listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun").forEach { day ->
 
-                    Spacer(Modifier.height(8.dp))
+                            val selected = selectedDays.contains(day)
 
-                    // 🔥 GRID DAYS (fixed)
-                    val rows = daysOfWeek.chunked(4)
-
-                    Column {
-                        rows.forEach { rowDays ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                rowDays.forEach { day ->
-
-                                    val selected = selectedDays.contains(day)
-
-                                    FilterChip(
-                                        selected = selected,
-                                        onClick = {
-                                            if (selected) selectedDays.remove(day)
-                                            else selectedDays.add(day)
-                                        },
-                                        label = { Text(mapDay(day)) }
-                                    )
-                                }
-                            }
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    if (selected) selectedDays.remove(day)
+                                    else selectedDays.add(day)
+                                },
+                                label = { Text(mapDay(day)) }
+                            )
                         }
                     }
 
                     Spacer(Modifier.height(10.dp))
 
-                    Text("Exercises")
-
-                    LazyColumn(modifier = Modifier.height(220.dp)) {
+                    LazyColumn(Modifier.height(220.dp)) {
 
                         items(exercises) { exercise ->
 
-                            val isSelected = selectedExercises.any { it.exercise.id == exercise.id }
+                            val config = selectedExercises[exercise.id]
 
                             Column(
-                                modifier = Modifier
+                                Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        if (isSelected) {
-                                            selectedExercises.removeIf { it.exercise.id == exercise.id }
-                                        } else {
-                                            selectedExercises.add(ExerciseConfig(exercise))
-                                        }
+                                        if (config != null)
+                                            selectedExercises.remove(exercise.id)
+                                        else
+                                            selectedExercises[exercise.id] =
+                                                ExerciseConfig(exercise, 3, 10, 0)
                                     }
                                     .padding(8.dp)
                             ) {
-
                                 Text(exercise.name)
-
-                                if (isSelected) {
-
-                                    val config = selectedExercises.first {
-                                        it.exercise.id == exercise.id
-                                    }
-
-                                    Spacer(Modifier.height(8.dp))
-
-                                    OutlinedTextField(
-                                        value = config.sets.toString(),
-                                        onValueChange = {
-                                            config.sets = it.toIntOrNull() ?: 0
-                                        },
-                                        label = { Text("Sets") }
-                                    )
-
-                                    OutlinedTextField(
-                                        value = config.reps.toString(),
-                                        onValueChange = {
-                                            config.reps = it.toIntOrNull() ?: 0
-                                        },
-                                        label = { Text("Reps") }
-                                    )
-
-                                    if (exercise.category == "Βαράκια" ||
-                                        exercise.category == "Όργανα"
-                                    ) {
-
-                                        OutlinedTextField(
-                                            value = config.weight.toString(),
-                                            onValueChange = {
-                                                config.weight = it.toIntOrNull() ?: 0
-                                            },
-                                            label = { Text("Kg") }
-                                        )
-                                    }
-                                }
                             }
                         }
                     }

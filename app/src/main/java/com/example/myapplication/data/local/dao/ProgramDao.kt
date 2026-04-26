@@ -1,38 +1,103 @@
 package com.example.myapplication.data.local.dao
 
 import androidx.room.*
-import com.example.myapplication.data.local.entity.Program
-import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
+import com.example.myapplication.data.local.entity.*
+import com.example.myapplication.data.local.relation.ProgramExerciseItem
 import com.example.myapplication.data.local.relation.ProgramWithExercises
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProgramDao {
 
-    // ➕ INSERT PROGRAM
+    // =====================
+    // PROGRAM
+    // =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgram(program: Program): Long
 
-    // ➕ INSERT RELATION (🔥 ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ)
+    @Delete
+    suspend fun deleteProgram(program: Program)
+
+    // =====================
+    // CROSS REF INSERT
+    // =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgramExerciseCrossRef(
         crossRef: ProgramExerciseCrossRef
     )
 
-    // 📖 GET ALL PROGRAMS (LIVE)
+    // =====================
+    // UPDATE (SAFE + RELIABLE)
+    // =====================
+    @Query("""
+        UPDATE program_exercise_cross_ref
+        SET sets = :sets,
+            reps = :reps,
+            weight = :weight,
+            position = :position
+        WHERE programId = :programId
+        AND exerciseId = :exerciseId
+    """)
+    suspend fun updateProgramExercise(
+        programId: Int,
+        exerciseId: Int,
+        sets: Int,
+        reps: Int,
+        weight: Int,
+        position: Int
+    )
+
+    // =====================
+    // DELETE ALL
+    // =====================
+    @Query("""
+        DELETE FROM program_exercise_cross_ref
+        WHERE programId = :programId
+    """)
+    suspend fun deleteProgramExercises(programId: Int)
+
+    // =====================
+    // DELETE SINGLE
+    // =====================
+    @Query("""
+        DELETE FROM program_exercise_cross_ref
+        WHERE programId = :programId
+        AND exerciseId = :exerciseId
+    """)
+    suspend fun deleteSingle(programId: Int, exerciseId: Int)
+
+    // =====================
+    // READ (FIXED: include id!)
+    // =====================
+    @Query("""
+    SELECT 
+        e.id AS exerciseId,
+        e.name,
+        e.category,
+        pxc.sets,
+        pxc.reps,
+        pxc.weight,
+        pxc.position
+    FROM exercises e
+    INNER JOIN program_exercise_cross_ref pxc
+        ON e.id = pxc.exerciseId
+    WHERE pxc.programId = :programId
+    ORDER BY pxc.position ASC
+""")
+    suspend fun getProgramExercises(programId: Int): List<ProgramExerciseItem>
+
+    // =====================
+    // PROGRAM LIST
+    // =====================
     @Query("SELECT * FROM programs")
-    fun getAllProgramsFlow(): Flow<List<Program>>
+    suspend fun getPrograms(): List<Program>
 
-    // ✏️ UPDATE
-    @Update
-    suspend fun updateProgram(program: Program)
-
-    // ❌ DELETE
-    @Delete
-    suspend fun deleteProgram(program: Program)
-
-    // 🔗 MANY-TO-MANY RELATION
     @Transaction
-    @Query("SELECT * FROM programs")
-    fun getProgramsWithExercises(): Flow<List<ProgramWithExercises>>
+    suspend fun getProgramsWithExercises(): List<ProgramWithExercises> {
+        return getPrograms().map { program ->
+            ProgramWithExercises(
+                program = program,
+                exercises = getProgramExercises(program.id)
+            )
+        }
+    }
 }

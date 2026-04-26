@@ -11,30 +11,34 @@ import com.example.myapplication.data.local.relation.ProgramWithExercises
 @Composable
 fun WorkoutScreen(program: ProgramWithExercises) {
 
-    var index by remember { mutableStateOf(0) }
-
     val exercises = program.exercises
 
-    // 🔥 χρόνος τρέχουσας άσκησης
-    var currentTime by remember { mutableStateOf(0) }
+    var index by remember { mutableStateOf(0) }
 
-    // 🔥 συνολικός χρόνος
+    var currentTime by remember { mutableStateOf(0) }
     var totalTime by remember { mutableStateOf(0) }
 
-    // 🔥 λίστα με χρόνους ανά άσκηση
-    val exerciseTimes = remember { mutableStateListOf<Pair<String, Int>>() }
+    val exerciseTimes = remember {
+        mutableStateListOf<Triple<String, Int, String>>()
+    }
 
-    // 🔥 TIMER EFFECT (τρέχει κάθε δευτερόλεπτο)
+    // 🔥 TIMER (FIXED - stops properly on change)
     LaunchedEffect(index) {
+
         currentTime = 0
+
+        if (index >= exercises.size) return@LaunchedEffect
 
         while (true) {
             delay(1000)
             currentTime++
+
+            // safety stop
+            if (index >= exercises.size) break
         }
     }
 
-    // ✅ ΤΕΛΟΣ WORKOUT
+    // 🔥 END SCREEN
     if (index >= exercises.size) {
 
         Column(
@@ -51,16 +55,22 @@ fun WorkoutScreen(program: ProgramWithExercises) {
 
             Spacer(Modifier.height(16.dp))
 
-            Text("Total Time: ${formatTime(totalTime)}")
+            Text(
+                text = "Total Time: ${formatTime(totalTime)}",
+                style = MaterialTheme.typography.titleLarge
+            )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
-            Text("Details:", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Exercise Breakdown",
+                style = MaterialTheme.typography.titleMedium
+            )
 
             Spacer(Modifier.height(10.dp))
 
-            exerciseTimes.forEach { (name, time) ->
-                Text("$name - ${formatTime(time)}")
+            exerciseTimes.forEach { (name, time, info) ->
+                Text("• $name ($info) → ${formatTime(time)}")
             }
         }
 
@@ -68,6 +78,10 @@ fun WorkoutScreen(program: ProgramWithExercises) {
     }
 
     val current = exercises[index]
+
+    val sets = current.sets
+    val reps = current.reps
+    val weight = current.weight
 
     Column(
         modifier = Modifier
@@ -81,24 +95,61 @@ fun WorkoutScreen(program: ProgramWithExercises) {
             style = MaterialTheme.typography.headlineLarge
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // 🔥 TIMER DISPLAY
-        Text(
-            text = formatTime(currentTime),
-            style = MaterialTheme.typography.headlineMedium
-        )
+        // 🔥 INFO CARD
+        Card(modifier = Modifier.fillMaxWidth()) {
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Column(Modifier.padding(16.dp)) {
+
+                Text("Workout Info", style = MaterialTheme.typography.titleMedium)
+
+                Spacer(Modifier.height(8.dp))
+
+                Text("Sets: $sets")
+                Text("Reps: $reps")
+
+                if (weight > 0) {
+                    Text("Weight: ${weight}kg")
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // 🔥 TIMER CARD
+        Card(modifier = Modifier.fillMaxWidth()) {
+
+            Column(Modifier.padding(16.dp)) {
+
+                Text("Time", style = MaterialTheme.typography.titleMedium)
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = formatTime(currentTime),
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = {
 
-                // 🔥 αποθήκευση χρόνου άσκησης
-                exerciseTimes.add(current.name to currentTime)
+                val info = buildString {
+                    append("Sets: $sets, Reps: $reps")
+                    if (weight > 0) {
+                        append(", Weight: ${weight}kg")
+                    }
+                }
+
+                exerciseTimes.add(
+                    Triple(current.name, currentTime, info)
+                )
 
                 totalTime += currentTime
-
                 index++
             },
             modifier = Modifier.fillMaxWidth()
@@ -108,7 +159,7 @@ fun WorkoutScreen(program: ProgramWithExercises) {
     }
 }
 
-// 🔥 helper για μορφή χρόνου
+// 🔥 time formatter
 fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
