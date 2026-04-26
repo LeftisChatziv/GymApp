@@ -1,4 +1,4 @@
-package com.example.myapplication.screens
+package com.example.myapplication.Screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,11 +7,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.myapplication.data.local.relation.ProgramWithExercises
+import com.example.myapplication.data.local.entity.Exercise
 
 data class EditableExercise(
     val exerciseId: Int,
@@ -19,36 +20,36 @@ data class EditableExercise(
     val category: String = "",
     val sets: Int,
     val reps: Int,
-    val weight: Int
+    val weight: Int,
+    val isNew: Boolean = false   // 🔥 ADD THIS
 )
-
 @Composable
 fun ProgramDetailsScreen(
-    program: com.example.myapplication.data.local.relation.ProgramWithExercises,
-    exercisesPool: List<com.example.myapplication.data.local.entity.Exercise>,
+    program: ProgramWithExercises,
+    exercisesPool: List<Exercise>,
     onStart: () -> Unit,
     onBack: () -> Unit,
     onDeleteProgram: () -> Unit,
-    onSaveAll: (List<EditableExercise>) -> Unit
+    onSaveAll: (Int, List<EditableExercise>) -> Unit,
+    onDeleteExercise: (Int, Int) -> Unit
 ) {
 
     val scroll = rememberScrollState()
 
-    val localExercises: SnapshotStateList<EditableExercise> =
-        remember(program.program.id) {
-            program.exercises
-                .map {
-                    EditableExercise(
-                        exerciseId = it.exerciseId,
-                        name = it.name,
-                        category = it.category,
-                        sets = it.sets,
-                        reps = it.reps,
-                        weight = it.weight
-                    )
-                }
-                .toMutableStateList()
-        }
+    // 🔥 FIX: always rebuild when program changes
+    val localExercises = remember(program.program.id, program.exercises) {
+
+        program.exercises.map {
+            EditableExercise(
+                exerciseId = it.exerciseId,
+                name = it.name,
+                category = it.category,
+                sets = it.sets,
+                reps = it.reps,
+                weight = it.weight
+            )
+        }.toMutableStateList()
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -59,10 +60,7 @@ fun ProgramDetailsScreen(
             .verticalScroll(scroll)
     ) {
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Button(onClick = onBack) { Text("Back") }
 
             Button(
@@ -95,7 +93,7 @@ fun ProgramDetailsScreen(
 
             itemsIndexed(
                 items = localExercises,
-                key = { index, item -> "${item.exerciseId}-$index" } // ✔ SAFE KEY
+                key = { _, item -> item.exerciseId }
             ) { index, ex ->
 
                 Card(
@@ -106,10 +104,10 @@ fun ProgramDetailsScreen(
 
                     Column(Modifier.padding(12.dp)) {
 
-                        Text(ex.name, style = MaterialTheme.typography.titleMedium)
+                        Text(ex.name)
 
                         fun update(updated: EditableExercise) {
-                            localExercises[index] = updated.toMutableCopy()
+                            localExercises[index] = updated
                         }
 
                         Row {
@@ -136,7 +134,6 @@ fun ProgramDetailsScreen(
                         }
 
                         if (ex.category.lowercase() != "body") {
-
                             OutlinedTextField(
                                 value = ex.weight.toString(),
                                 onValueChange = {
@@ -144,11 +141,6 @@ fun ProgramDetailsScreen(
                                 },
                                 label = { Text("Kg") },
                                 modifier = Modifier.fillMaxWidth()
-                            )
-                        } else {
-                            Text(
-                                "Bodyweight exercise (no weight needed)",
-                                style = MaterialTheme.typography.bodySmall
                             )
                         }
 
@@ -175,7 +167,15 @@ fun ProgramDetailsScreen(
                             }
 
                             Button(
-                                onClick = { localExercises.removeAt(index) },
+                                onClick = {
+                                    val removed = localExercises[index]
+                                    localExercises.removeAt(index)
+
+                                    onDeleteExercise(
+                                        program.program.id,
+                                        removed.exerciseId
+                                    )
+                                },
                                 colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.error)
                             ) {
                                 Text("X")
@@ -189,7 +189,9 @@ fun ProgramDetailsScreen(
         Spacer(Modifier.height(20.dp))
 
         Button(
-            onClick = { onSaveAll(localExercises.map { it.copy() }) },
+            onClick = {
+                onSaveAll(program.program.id, localExercises.toList())
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("💾 SAVE ALL CHANGES")
@@ -202,12 +204,11 @@ fun ProgramDetailsScreen(
         }
     }
 
+    // ================= ADD DIALOG =================
     if (showAddDialog) {
-
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             confirmButton = {},
-
             text = {
 
                 Column(
@@ -223,16 +224,20 @@ fun ProgramDetailsScreen(
                                 .fillMaxWidth()
                                 .clickable {
 
-                                    localExercises.add(
-                                        EditableExercise(
-                                            exerciseId = ex.id,
-                                            name = ex.name,
-                                            category = ex.category,
-                                            sets = 3,
-                                            reps = 10,
-                                            weight = 0
+                                    if (localExercises.none { it.exerciseId == ex.id }) {
+
+                                        localExercises.add(
+                                            EditableExercise(
+                                                exerciseId = ex.id,
+                                                name = ex.name,
+                                                category = ex.category,
+                                                sets = 3,
+                                                reps = 10,
+                                                weight = 0,
+                                                isNew = true   // 🔥 IMPORTANT
+                                            )
                                         )
-                                    )
+                                    }
 
                                     showAddDialog = false
                                 }
@@ -247,12 +252,9 @@ fun ProgramDetailsScreen(
     }
 }
 
-// SAFE SWAP
+// SWAP
 private fun <T> MutableList<T>.swap(i: Int, j: Int) {
     val tmp = this[i]
     this[i] = this[j]
     this[j] = tmp
 }
-
-// SAFE COPY EXTENSION (helps recomposition)
-private fun EditableExercise.toMutableCopy() = this.copy()

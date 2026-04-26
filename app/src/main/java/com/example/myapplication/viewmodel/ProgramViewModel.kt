@@ -9,9 +9,12 @@ import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
 import com.example.myapplication.data.local.relation.ProgramExerciseItem
 import com.example.myapplication.data.local.relation.ProgramWithExercises
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
+import com.example.myapplication.data.local.entity.Exercise
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.StateFlow
+import com.example.myapplication.Screens.EditableExercise
 data class ExercisePlan(
     val exerciseId: Int,
     val sets: Int,
@@ -111,25 +114,38 @@ class ProgramViewModel(application: Application) : AndroidViewModel(application)
     // =====================
     // SAVE ALL (IMPORTANT FIX)
     // =====================
-    fun saveAll(programId: Int, list: List<ProgramExerciseItem>) {
+    fun saveAll(programId: Int, list: List<EditableExercise>) {
         viewModelScope.launch {
 
             list.forEachIndexed { index, item ->
-                dao.updateProgramExercise(
-                    programId = programId,
-                    exerciseId = item.exerciseId,
-                    sets = item.sets,
-                    reps = item.reps,
-                    weight = item.weight,
-                    position = index
-                )
+
+                if (item.isNew) {
+                    dao.insertProgramExerciseCrossRef(
+                        ProgramExerciseCrossRef(
+                            programId = programId,
+                            exerciseId = item.exerciseId,
+                            sets = item.sets,
+                            reps = item.reps,
+                            weight = item.weight,
+                            position = index
+                        )
+                    )
+                } else {
+                    dao.updateProgramExercise(
+                        programId = programId,
+                        exerciseId = item.exerciseId,
+                        sets = item.sets,
+                        reps = item.reps,
+                        weight = item.weight,
+                        position = index
+                    )
+                }
             }
 
-            _activeExercises.value = dao.getProgramExercises(programId)
-            _programs.value = dao.getProgramsWithExercises()
+            loadPrograms()
+            loadProgramExercises(programId)
         }
     }
-
     // =====================
     // DELETE EXERCISE
     // =====================

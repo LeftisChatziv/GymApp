@@ -26,7 +26,7 @@ interface ProgramDao {
     )
 
     // =====================
-    // UPDATE (SAFE + RELIABLE)
+    // UPDATE (OPTIONAL - not needed anymore)
     // =====================
     @Query("""
         UPDATE program_exercise_cross_ref
@@ -47,7 +47,7 @@ interface ProgramDao {
     )
 
     // =====================
-    // DELETE ALL
+    // DELETE ALL EXERCISES OF PROGRAM
     // =====================
     @Query("""
         DELETE FROM program_exercise_cross_ref
@@ -56,7 +56,7 @@ interface ProgramDao {
     suspend fun deleteProgramExercises(programId: Int)
 
     // =====================
-    // DELETE SINGLE
+    // DELETE SINGLE EXERCISE
     // =====================
     @Query("""
         DELETE FROM program_exercise_cross_ref
@@ -66,23 +66,24 @@ interface ProgramDao {
     suspend fun deleteSingle(programId: Int, exerciseId: Int)
 
     // =====================
-    // READ (FIXED: include id!)
+    // READ PROGRAM EXERCISES (FIXED)
     // =====================
     @Query("""
-    SELECT 
-        e.id AS exerciseId,
-        e.name,
-        e.category,
-        pxc.sets,
-        pxc.reps,
-        pxc.weight,
-        pxc.position
-    FROM exercises e
-    INNER JOIN program_exercise_cross_ref pxc
-        ON e.id = pxc.exerciseId
-    WHERE pxc.programId = :programId
-    ORDER BY pxc.position ASC
-""")
+        SELECT 
+            pxc.programId AS programId,
+            e.id AS exerciseId,
+            e.name,
+            e.category,
+            pxc.sets,
+            pxc.reps,
+            pxc.weight,
+            pxc.position
+        FROM program_exercise_cross_ref pxc
+        INNER JOIN exercises e
+            ON e.id = pxc.exerciseId
+        WHERE pxc.programId = :programId
+        ORDER BY pxc.position ASC
+    """)
     suspend fun getProgramExercises(programId: Int): List<ProgramExerciseItem>
 
     // =====================

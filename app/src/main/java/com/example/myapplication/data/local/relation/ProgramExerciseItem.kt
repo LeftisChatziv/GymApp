@@ -1,8 +1,7 @@
 package com.example.myapplication.data.local.relation
 
-import androidx.room.ColumnInfo
-
 data class ProgramExerciseItem(
+    val programId: Int,   // 🔥 ADD THIS (IMPORTANT)
     val exerciseId: Int,
     val name: String,
     val category: String,
