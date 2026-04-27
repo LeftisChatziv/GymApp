@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.*
 import com.example.myapplication.Screens.*
 import com.example.myapplication.Screens.ProgramScreen
+import com.example.myapplication.screens.ProgressScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
