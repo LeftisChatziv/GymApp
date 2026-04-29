@@ -11,70 +11,39 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.myapplication.data.local.entity.Exercise
+import com.example.myapplication.data.local.entity.*
 import com.example.myapplication.data.local.relation.ProgramWithExercises
-import com.example.myapplication.data.local.relation.ProgramExerciseItem
 import com.example.myapplication.viewmodel.ProgramViewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
-import com.example.myapplication.viewmodel.ExercisePlan
-import com.example.myapplication.Screens.ProgramDetailsScreen
-
-data class ExerciseConfig(
-    val exercise: Exercise,
-    val sets: Int,
-    val reps: Int,
-    val weight: Int
-)
 
 @Composable
-fun ProgramScreen() {
+fun ProgramScreen(
+    onOpenProgram: (ProgramWithExercises) -> Unit
+) {
 
-    val viewModel: ProgramViewModel = viewModel()
+    val programViewModel: ProgramViewModel = viewModel()
     val exerciseViewModel: ExerciseViewModel = viewModel()
 
-    val programs by viewModel.programs.collectAsState()
+    val programs by programViewModel.programs.collectAsState()
     val exercises by exerciseViewModel.exercises.collectAsState(initial = emptyList())
-
-    var selectedProgram by remember { mutableStateOf<ProgramWithExercises?>(null) }
 
     var showDialog by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
 
     val selectedDays = remember { mutableStateListOf<String>() }
-    val selectedExercises = remember { mutableStateMapOf<Int, ExerciseConfig>() }
 
-    // ================= DETAILS =================
-    selectedProgram?.let { program ->
+    // ✅ μόνο UI state (ΟΧΙ DB object)
+    data class TempExercise(
+        val exerciseId: Int,
+        val sets: Int,
+        val reps: Int,
+        val weight: Int
+    )
 
-        ProgramDetailsScreen(
-            program = program,
-            exercisesPool = exercises,
-
-            onStart = {},
-
-            onBack = {
-                selectedProgram = null
-            },
-
-            onDeleteProgram = {
-                viewModel.deleteProgram(program.program)
-                selectedProgram = null
-            },
-
-            onSaveAll = { programId, list: List<EditableExercise> ->
-
-                viewModel.saveAll(programId, list)
-            },
-
-            onDeleteExercise = { programId, exerciseId ->
-                viewModel.deleteExercise(programId, exerciseId)
-            }
-        )
-
-        return
+    val selectedExercises = remember {
+        mutableStateMapOf<Int, TempExercise>()
     }
 
-    // ================= MAIN =================
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
@@ -94,15 +63,13 @@ fun ProgramScreen() {
             Spacer(Modifier.height(12.dp))
 
             LazyColumn {
-
                 items(programs) { program ->
-
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(8.dp)
                             .clickable {
-                                selectedProgram = program
+                                onOpenProgram(program)
                             }
                     ) {
                         Column(Modifier.padding(16.dp)) {
@@ -115,7 +82,7 @@ fun ProgramScreen() {
         }
     }
 
-    // ================= CREATE =================
+    // ================= CREATE DIALOG =================
     if (showDialog) {
 
         AlertDialog(
@@ -125,22 +92,22 @@ fun ProgramScreen() {
 
                 TextButton(onClick = {
 
-                    val plan = selectedExercises.values
-                        .toList()
-                        .mapIndexed { index, it ->
-                            ExercisePlan(
-                                exerciseId = it.exercise.id,
-                                sets = it.sets,
-                                reps = it.reps,
-                                weight = it.weight,
-                                position = index
-                            )
-                        }
+                    // 🔥 FIX: convert UI → DB model σωστά
+                    val crossRefs = selectedExercises.values.mapIndexed { index, item ->
+                        ProgramExerciseCrossRef(
+                            programId = 0, // ❗ αγνοείται, μπαίνει στο ViewModel
+                            exerciseId = item.exerciseId,
+                            sets = item.sets,
+                            reps = item.reps,
+                            weight = item.weight,
+                            position = index
+                        )
+                    }
 
-                    viewModel.createProgram(
+                    programViewModel.createProgram(
                         title = title,
                         days = selectedDays.toList(),
-                        exercises = plan
+                        exercises = crossRefs
                     )
 
                     showDialog = false
@@ -191,21 +158,29 @@ fun ProgramScreen() {
 
                     Spacer(Modifier.height(10.dp))
 
-                    LazyColumn(Modifier.height(200.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.height(200.dp)
+                    ) {
 
                         items(exercises) { exercise ->
 
-                            val config = selectedExercises[exercise.id]
+                            val selected = selectedExercises[exercise.id]
 
                             Row(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        if (config != null)
+                                        if (selected != null) {
                                             selectedExercises.remove(exercise.id)
-                                        else
+                                        } else {
                                             selectedExercises[exercise.id] =
-                                                ExerciseConfig(exercise, 3, 10, 0)
+                                                TempExercise(
+                                                    exerciseId = exercise.id,
+                                                    sets = 3,
+                                                    reps = 10,
+                                                    weight = 0
+                                                )
+                                        }
                                     }
                                     .padding(8.dp)
                             ) {

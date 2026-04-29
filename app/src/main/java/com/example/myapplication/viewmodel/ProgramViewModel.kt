@@ -4,74 +4,60 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.database.AppDatabase
-import com.example.myapplication.data.local.entity.Program
-import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
-import com.example.myapplication.data.local.relation.ProgramExerciseItem
+import com.example.myapplication.data.local.entity.*
 import com.example.myapplication.data.local.relation.ProgramWithExercises
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
-import com.example.myapplication.data.local.entity.Exercise
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.StateFlow
 import com.example.myapplication.Screens.EditableExercise
-data class ExercisePlan(
-    val exerciseId: Int,
-    val sets: Int,
-    val reps: Int,
-    val weight: Int,
-    val position: Int
-)
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import com.example.myapplication.data.local.relation.ProgramExerciseItem
 
 class ProgramViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = AppDatabase.getDatabase(application).programDao()
+    private val programDao = AppDatabase.getDatabase(application).programDao()
 
+    // ================= PROGRAMS =================
     private val _programs = MutableStateFlow<List<ProgramWithExercises>>(emptyList())
     val programs: StateFlow<List<ProgramWithExercises>> = _programs
 
-    private val _activeExercises =
-        MutableStateFlow<List<ProgramExerciseItem>>(emptyList())
-    val activeExercises: StateFlow<List<ProgramExerciseItem>> = _activeExercises
+    // ================= SELECTED PROGRAM =================
+    private val _selectedProgramId = MutableStateFlow<Int?>(null)
+    val selectedProgramId: StateFlow<Int?> = _selectedProgramId
+
+    fun selectProgram(programId: Int) {
+        _selectedProgramId.value = programId
+    }
 
     init {
         loadPrograms()
     }
 
-    // =====================
-    // LOAD ALL PROGRAMS
-    // =====================
+    // ================= LOAD =================
     fun loadPrograms() {
         viewModelScope.launch {
-            _programs.value = dao.getProgramsWithExercises()
+            _programs.value = programDao.getProgramsWithExercises()
         }
     }
 
-    // =====================
-    // LOAD EXERCISES
-    // =====================
-    fun loadProgramExercises(programId: Int) {
-        viewModelScope.launch {
-            _activeExercises.value = dao.getProgramExercises(programId)
-        }
-    }
-
-    // =====================
-    // CREATE PROGRAM
-    // =====================
+    // ================= CREATE PROGRAM =================
     fun createProgram(
         title: String,
         days: List<String>,
-        exercises: List<ExercisePlan>
+        exercises: List<ProgramExerciseCrossRef>
     ) {
         viewModelScope.launch {
 
-            val programId = dao.insertProgram(
-                Program(name = title, days = days.joinToString(","))
+            val programId = programDao.insertProgram(
+                Program(
+                    name = title,
+                    days = days.joinToString(",")
+                )
             ).toInt()
 
+            // ✔ FIX: direct insert with corrected programId
             exercises.forEachIndexed { index, ex ->
-                dao.insertProgramExerciseCrossRef(
+
+                programDao.insertProgramExerciseCrossRef(
                     ProgramExerciseCrossRef(
                         programId = programId,
                         exerciseId = ex.exerciseId,
@@ -87,51 +73,25 @@ class ProgramViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    // =====================
-    // UPDATE SINGLE ITEM
-    // =====================
-    fun updateExercise(
-        programId: Int,
-        item: ProgramExerciseItem,
-        position: Int
-    ) {
-        viewModelScope.launch {
-
-            dao.updateProgramExercise(
-                programId = programId,
-                exerciseId = item.exerciseId,
-                sets = item.sets,
-                reps = item.reps,
-                weight = item.weight,
-                position = position
-            )
-
-            loadProgramExercises(programId)
-            loadPrograms()
-        }
-    }
-
-    // =====================
-    // SAVE ALL (IMPORTANT FIX)
-    // =====================
+    // ================= SAVE ALL =================
     fun saveAll(programId: Int, list: List<EditableExercise>) {
         viewModelScope.launch {
 
             list.forEachIndexed { index, item ->
 
+                val crossRef = ProgramExerciseCrossRef(
+                    programId = programId,
+                    exerciseId = item.exerciseId,
+                    sets = item.sets,
+                    reps = item.reps,
+                    weight = item.weight,
+                    position = index
+                )
+
                 if (item.isNew) {
-                    dao.insertProgramExerciseCrossRef(
-                        ProgramExerciseCrossRef(
-                            programId = programId,
-                            exerciseId = item.exerciseId,
-                            sets = item.sets,
-                            reps = item.reps,
-                            weight = item.weight,
-                            position = index
-                        )
-                    )
+                    programDao.insertProgramExerciseCrossRef(crossRef)
                 } else {
-                    dao.updateProgramExercise(
+                    programDao.updateProgramExercise(
                         programId = programId,
                         exerciseId = item.exerciseId,
                         sets = item.sets,
@@ -143,28 +103,31 @@ class ProgramViewModel(application: Application) : AndroidViewModel(application)
             }
 
             loadPrograms()
-            loadProgramExercises(programId)
         }
     }
-    // =====================
-    // DELETE EXERCISE
-    // =====================
+
+    // ================= DELETE EXERCISE =================
     fun deleteExercise(programId: Int, exerciseId: Int) {
         viewModelScope.launch {
-            dao.deleteSingle(programId, exerciseId)
-            loadProgramExercises(programId)
+            programDao.deleteSingle(programId, exerciseId)
             loadPrograms()
         }
     }
 
-    // =====================
-    // DELETE PROGRAM
-    // =====================
+    // ================= DELETE PROGRAM =================
     fun deleteProgram(program: Program) {
         viewModelScope.launch {
-            dao.deleteProgramExercises(program.id)
-            dao.deleteProgram(program)
+            programDao.deleteProgramExercises(program.id)
+            programDao.deleteProgram(program)
+            _selectedProgramId.value = null
             loadPrograms()
+        }
+    }
+    fun calculateTotalVolume(
+        exercises: List<ProgramExerciseItem>
+    ): Int {
+        return exercises.sumOf {
+            it.sets * it.reps * it.weight
         }
     }
 }

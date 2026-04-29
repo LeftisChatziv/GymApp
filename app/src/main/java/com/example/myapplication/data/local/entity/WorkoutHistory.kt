@@ -9,10 +9,19 @@ data class WorkoutHistory(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
 
-    // 🔥 αντί για programId
-    val difficulty: String, // "Easy" ή "Hard"
+    // 🔗 link με program
+    val programId: Int,
 
+    val programName: String,
+
+    val difficulty: String,
+
+    // timestamp (System.currentTimeMillis())
     val date: Long,
 
-    val durationMinutes: Int
+    val durationMinutes: Int,
+
+    val totalExercises: Int,
+
+    val completedExercises: Int
 )

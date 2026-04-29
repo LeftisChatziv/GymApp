@@ -14,15 +14,15 @@ data class Exercise(
 
     val name: String,
 
-    // 🏷️ Category
-    val category: String, // Σώμα / Βαράκια / Όργανα
+    // 🏷️ Category (Body / Dumbbells / Machines)
+    val category: String,
 
-    // 💪 Μυϊκές ομάδες
+    // 💪 Muscle groups
     val muscleGroups: List<MuscleActivation>,
 
-    // 📝 Περιγραφή
+    // 📝 Description
     val description: String,
 
-    // 🔥 Difficulty αντί για programId
-    val difficulty: String // "Easy" ή "Hard"
+    // 🔥 Difficulty (Easy / Hard)
+    val difficulty: String
 )

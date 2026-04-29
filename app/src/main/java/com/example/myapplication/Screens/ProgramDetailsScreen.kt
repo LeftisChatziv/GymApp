@@ -13,58 +13,71 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.example.myapplication.data.local.relation.ProgramWithExercises
 import com.example.myapplication.data.local.entity.Exercise
+import com.example.myapplication.viewmodel.ProgramViewModel
 
 data class EditableExercise(
     val exerciseId: Int,
     val name: String,
-    val category: String = "",
+    val category: String,
     val sets: Int,
     val reps: Int,
     val weight: Int,
-    val isNew: Boolean = false   // 🔥 ADD THIS
+    val isNew: Boolean = false
 )
+
 @Composable
 fun ProgramDetailsScreen(
     program: ProgramWithExercises,
     exercisesPool: List<Exercise>,
+    programViewModel: ProgramViewModel,
     onStart: () -> Unit,
-    onBack: () -> Unit,
-    onDeleteProgram: () -> Unit,
-    onSaveAll: (Int, List<EditableExercise>) -> Unit,
-    onDeleteExercise: (Int, Int) -> Unit
+    onBack: () -> Unit
 ) {
 
-    val scroll = rememberScrollState()
-
-    // 🔥 FIX: always rebuild when program changes
-    val localExercises = remember(program.program.id, program.exercises) {
-
-        program.exercises.map {
-            EditableExercise(
-                exerciseId = it.exerciseId,
-                name = it.name,
-                category = it.category,
-                sets = it.sets,
-                reps = it.reps,
-                weight = it.weight
-            )
-        }.toMutableStateList()
-    }
-
+    val localExercises = remember { mutableStateListOf<EditableExercise>() }
     var showAddDialog by remember { mutableStateOf(false) }
+
+    // ================= SYNC =================
+    LaunchedEffect(program.program.id) {
+
+        localExercises.clear()
+
+        localExercises.addAll(
+            program.exercises.map { ex ->
+                EditableExercise(
+                    exerciseId = ex.exerciseId,
+                    name = ex.name,
+                    category = ex.category,
+                    sets = ex.sets,
+                    reps = ex.reps,
+                    weight = ex.weight,
+                    isNew = false
+                )
+            }
+        )
+    }
 
     Column(
         Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(scroll)
     ) {
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = onBack) { Text("Back") }
+        // ================= HEADER =================
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+
+            Button(onClick = onBack) {
+                Text("Back")
+            }
 
             Button(
-                onClick = onDeleteProgram,
+                onClick = {
+                    programViewModel.deleteProgram(program.program)
+                    onBack()
+                },
                 colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.error)
             ) {
                 Text("Delete")
@@ -87,14 +100,12 @@ fun ProgramDetailsScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // ================= LIST =================
         LazyColumn(
-            modifier = Modifier.heightIn(max = 500.dp)
+            modifier = Modifier.weight(1f)
         ) {
 
-            itemsIndexed(
-                items = localExercises,
-                key = { _, item -> item.exerciseId }
-            ) { index, ex ->
+            itemsIndexed(localExercises) { index, ex ->
 
                 Card(
                     Modifier
@@ -106,16 +117,13 @@ fun ProgramDetailsScreen(
 
                         Text(ex.name)
 
-                        fun update(updated: EditableExercise) {
-                            localExercises[index] = updated
-                        }
-
                         Row {
 
                             OutlinedTextField(
                                 value = ex.sets.toString(),
                                 onValueChange = {
-                                    update(ex.copy(sets = it.toIntOrNull() ?: 0))
+                                    localExercises[index] =
+                                        ex.copy(sets = it.toIntOrNull() ?: ex.sets)
                                 },
                                 label = { Text("Sets") },
                                 modifier = Modifier.weight(1f)
@@ -126,18 +134,21 @@ fun ProgramDetailsScreen(
                             OutlinedTextField(
                                 value = ex.reps.toString(),
                                 onValueChange = {
-                                    update(ex.copy(reps = it.toIntOrNull() ?: 0))
+                                    localExercises[index] =
+                                        ex.copy(reps = it.toIntOrNull() ?: ex.reps)
                                 },
                                 label = { Text("Reps") },
                                 modifier = Modifier.weight(1f)
                             )
                         }
 
-                        if (ex.category.lowercase() != "body") {
+                        // ✅ safer condition
+                        if (ex.category != "Body") {
                             OutlinedTextField(
                                 value = ex.weight.toString(),
                                 onValueChange = {
-                                    update(ex.copy(weight = it.toIntOrNull() ?: 0))
+                                    localExercises[index] =
+                                        ex.copy(weight = it.toIntOrNull() ?: ex.weight)
                                 },
                                 label = { Text("Kg") },
                                 modifier = Modifier.fillMaxWidth()
@@ -150,20 +161,19 @@ fun ProgramDetailsScreen(
                         ) {
 
                             Row {
-
                                 Button(onClick = {
-                                    if (index > 0) {
-                                        localExercises.swap(index, index - 1)
-                                    }
-                                }) { Text("⬆") }
+                                    localExercises.swap(index, index - 1)
+                                }, enabled = index > 0) {
+                                    Text("⬆")
+                                }
 
                                 Spacer(Modifier.width(4.dp))
 
                                 Button(onClick = {
-                                    if (index < localExercises.lastIndex) {
-                                        localExercises.swap(index, index + 1)
-                                    }
-                                }) { Text("⬇") }
+                                    localExercises.swap(index, index + 1)
+                                }, enabled = index < localExercises.lastIndex) {
+                                    Text("⬇")
+                                }
                             }
 
                             Button(
@@ -171,7 +181,7 @@ fun ProgramDetailsScreen(
                                     val removed = localExercises[index]
                                     localExercises.removeAt(index)
 
-                                    onDeleteExercise(
+                                    programViewModel.deleteExercise(
                                         program.program.id,
                                         removed.exerciseId
                                     )
@@ -186,11 +196,15 @@ fun ProgramDetailsScreen(
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
 
+        // ================= SAVE =================
         Button(
             onClick = {
-                onSaveAll(program.program.id, localExercises.toList())
+                programViewModel.saveAll(
+                    program.program.id,
+                    localExercises.toList()
+                )
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -199,16 +213,25 @@ fun ProgramDetailsScreen(
 
         Spacer(Modifier.height(10.dp))
 
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onStart,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("START WORKOUT")
         }
     }
 
     // ================= ADD DIALOG =================
     if (showAddDialog) {
+
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            confirmButton = {},
+            confirmButton = {
+                TextButton(onClick = { showAddDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = { Text("Select Exercise") },
             text = {
 
                 Column(
@@ -225,7 +248,6 @@ fun ProgramDetailsScreen(
                                 .clickable {
 
                                     if (localExercises.none { it.exerciseId == ex.id }) {
-
                                         localExercises.add(
                                             EditableExercise(
                                                 exerciseId = ex.id,
@@ -234,7 +256,7 @@ fun ProgramDetailsScreen(
                                                 sets = 3,
                                                 reps = 10,
                                                 weight = 0,
-                                                isNew = true   // 🔥 IMPORTANT
+                                                isNew = true
                                             )
                                         )
                                     }
@@ -252,8 +274,8 @@ fun ProgramDetailsScreen(
     }
 }
 
-// SWAP
-private fun <T> MutableList<T>.swap(i: Int, j: Int) {
+// ================= HELPER =================
+fun <T> MutableList<T>.swap(i: Int, j: Int) {
     val tmp = this[i]
     this[i] = this[j]
     this[j] = tmp

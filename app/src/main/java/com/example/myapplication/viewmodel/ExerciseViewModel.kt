@@ -13,6 +13,7 @@ class ExerciseViewModel(application: Application) : AndroidViewModel(application
 
     private val dao = AppDatabase.getDatabase(application).exerciseDao()
 
+    // ================= EXERCISES FLOW =================
     val exercises: StateFlow<List<Exercise>> =
         dao.getAllExercisesFlow()
             .onStart {

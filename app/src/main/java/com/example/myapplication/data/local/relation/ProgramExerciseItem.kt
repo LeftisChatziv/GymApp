@@ -1,7 +1,7 @@
 package com.example.myapplication.data.local.relation
 
 data class ProgramExerciseItem(
-    val programId: Int,   // 🔥 ADD THIS (IMPORTANT)
+    val programId: Int,
     val exerciseId: Int,
     val name: String,
     val category: String,

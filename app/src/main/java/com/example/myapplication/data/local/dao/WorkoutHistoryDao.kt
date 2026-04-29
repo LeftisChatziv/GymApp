@@ -9,9 +9,8 @@ interface WorkoutHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(history: WorkoutHistory)
 
-    @Query("SELECT * FROM workout_history")
+    @Query("SELECT * FROM workout_history ORDER BY date DESC")
     suspend fun getAll(): List<WorkoutHistory>
-
 
     @Delete
     suspend fun delete(history: WorkoutHistory)

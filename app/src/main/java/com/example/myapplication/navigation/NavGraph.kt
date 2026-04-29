@@ -1,13 +1,15 @@
 package com.example.myapplication.navigation
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.example.myapplication.Screens.*
-import com.example.myapplication.Screens.ProgramScreen
-import com.example.myapplication.screens.ProgressScreen
+import com.example.myapplication.viewmodel.ProgramViewModel
+import com.example.myapplication.viewmodel.ExerciseViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -17,10 +19,20 @@ fun NavGraph(
 ) {
 
     val navController = rememberNavController()
+
+    val programViewModel: ProgramViewModel = viewModel()
+    val exerciseViewModel: ExerciseViewModel = viewModel()
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val noBottomBarScreens = listOf("login", "register")
+    val bottomBarRoutes = listOf(
+        "home",
+        "exercises",
+        "program",
+        "progress",
+        "profile"
+    )
 
     Scaffold(
 
@@ -36,7 +48,7 @@ fun NavGraph(
         },
 
         bottomBar = {
-            if (currentRoute !in noBottomBarScreens) {
+            if (currentRoute in bottomBarRoutes) {
                 NavBar(
                     selectedItem = currentRoute ?: "home",
                     onItemSelected = { route ->
@@ -87,10 +99,73 @@ fun NavGraph(
                 )
             }
 
-            composable("exercises") { ExercisesScreen() }
-            composable("program") { ProgramScreen() }
-            composable("progress") { ProgressScreen() }
-            composable("profile") { ProfileScreen() }
+            composable("exercises") {
+                ExercisesScreen()
+            }
+
+            composable("program") {
+                ProgramScreen(
+                    onOpenProgram = { program ->
+                        programViewModel.selectProgram(program.program.id)
+                        navController.navigate("program_details")
+                    }
+                )
+            }
+
+            composable("program_details") {
+
+                val programs by programViewModel.programs.collectAsState()
+                val selectedId by programViewModel.selectedProgramId.collectAsState()
+                val exercisesPool by exerciseViewModel.exercises.collectAsState(initial = emptyList())
+
+                val program = programs.firstOrNull { it.program.id == selectedId }
+
+                if (program == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No program selected")
+                    }
+                    return@composable
+                }
+
+                ProgramDetailsScreen(
+                    program = program,
+                    exercisesPool = exercisesPool,
+                    programViewModel = programViewModel,
+                    onStart = { navController.navigate("workout") },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("workout") {
+
+                val programs by programViewModel.programs.collectAsState()
+                val selectedId by programViewModel.selectedProgramId.collectAsState()
+
+                val program = programs.firstOrNull { it.program.id == selectedId }
+
+                if (program == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No workout selected")
+                    }
+                    return@composable
+                }
+
+                WorkoutScreen(program)
+            }
+
+            composable("progress") {
+                ProgressScreen()
+            }
+
+            composable("profile") {
+                ProfileScreen()
+            }
         }
     }
 }

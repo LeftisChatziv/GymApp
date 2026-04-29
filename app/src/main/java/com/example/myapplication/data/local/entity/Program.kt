@@ -11,9 +11,9 @@ data class Program(
 
     val name: String,
 
-    // ✔ προαιρετικό πλέον (μπορείς να το κρατήσεις ή να το αφαιρέσεις)
-    val difficulty: String? = null,
+    // 🔥 avoid nulls → safer
+    val difficulty: String = "Medium",
 
-    // ✔ NEW: αποθήκευση ημερών (Mon, Tue, κλπ)
+    // Mon,Tue,Wed...
     val days: String
 )
