@@ -5,16 +5,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import com.example.myapplication.data.local.relation.ProgramWithExercises
+import com.example.myapplication.viewmodel.WorkoutViewModel
 
 @Composable
-fun WorkoutScreen(program: ProgramWithExercises) {
+fun WorkoutScreen(
+    program: ProgramWithExercises,
+    onGoToProgress: () -> Unit
+) {
+
+    val workoutViewModel: WorkoutViewModel = viewModel()
 
     val exercises = program.exercises
 
     var index by remember { mutableStateOf(0) }
-
     var currentTime by remember { mutableStateOf(0) }
     var totalTime by remember { mutableStateOf(0) }
 
@@ -22,24 +28,23 @@ fun WorkoutScreen(program: ProgramWithExercises) {
         mutableStateListOf<Triple<String, Int, String>>()
     }
 
-    // 🔥 TIMER (FIXED - stops properly on change)
+    val isFinished = index >= exercises.size
+
+    // ================= TIMER =================
     LaunchedEffect(index) {
 
         currentTime = 0
 
-        if (index >= exercises.size) return@LaunchedEffect
+        if (isFinished) return@LaunchedEffect
 
-        while (true) {
+        while (index < exercises.size) {
             delay(1000)
             currentTime++
-
-            // safety stop
-            if (index >= exercises.size) break
         }
     }
 
-    // 🔥 END SCREEN
-    if (index >= exercises.size) {
+    // ================= END SCREEN =================
+    if (isFinished) {
 
         Column(
             modifier = Modifier
@@ -72,16 +77,21 @@ fun WorkoutScreen(program: ProgramWithExercises) {
             exerciseTimes.forEach { (name, time, info) ->
                 Text("• $name ($info) → ${formatTime(time)}")
             }
+
+            Spacer(Modifier.height(30.dp))
+
+            Button(
+                onClick = onGoToProgress,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("📊 Go to Progress")
+            }
         }
 
         return
     }
 
     val current = exercises[index]
-
-    val sets = current.sets
-    val reps = current.reps
-    val weight = current.weight
 
     Column(
         modifier = Modifier
@@ -97,7 +107,7 @@ fun WorkoutScreen(program: ProgramWithExercises) {
 
         Spacer(Modifier.height(8.dp))
 
-        // 🔥 INFO CARD
+        // ================= INFO =================
         Card(modifier = Modifier.fillMaxWidth()) {
 
             Column(Modifier.padding(16.dp)) {
@@ -106,18 +116,18 @@ fun WorkoutScreen(program: ProgramWithExercises) {
 
                 Spacer(Modifier.height(8.dp))
 
-                Text("Sets: $sets")
-                Text("Reps: $reps")
+                Text("Sets: ${current.sets}")
+                Text("Reps: ${current.reps}")
 
-                if (weight > 0) {
-                    Text("Weight: ${weight}kg")
+                if (current.weight > 0) {
+                    Text("Weight: ${current.weight}kg")
                 }
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // 🔥 TIMER CARD
+        // ================= TIMER =================
         Card(modifier = Modifier.fillMaxWidth()) {
 
             Column(Modifier.padding(16.dp)) {
@@ -135,21 +145,36 @@ fun WorkoutScreen(program: ProgramWithExercises) {
 
         Spacer(Modifier.height(24.dp))
 
+        // ================= COMPLETE =================
         Button(
             onClick = {
 
-                val info = buildString {
-                    append("Sets: $sets, Reps: $reps")
-                    if (weight > 0) {
-                        append(", Weight: ${weight}kg")
-                    }
-                }
+                val sets = current.sets
+                val reps = current.reps
+                val weight = current.weight
+
+                val info = "Sets: $sets, Reps: $reps" +
+                        if (weight > 0) ", Weight: ${weight}kg" else ""
 
                 exerciseTimes.add(
                     Triple(current.name, currentTime, info)
                 )
 
                 totalTime += currentTime
+
+                // 🔥 SAVE TO DB (FIXED SAFETY)
+                workoutViewModel.saveWorkoutHistory(
+                    programId = program.program.id,
+                    programName = program.program.name,
+                    exerciseName = current.name,
+                    sets = sets,
+                    reps = reps,
+                    weight = weight,
+                    duration = currentTime.coerceAtLeast(1),
+                    totalExercises = exercises.size,
+                    completedExercises = index + 1
+                )
+
                 index++
             },
             modifier = Modifier.fillMaxWidth()
@@ -159,7 +184,7 @@ fun WorkoutScreen(program: ProgramWithExercises) {
     }
 }
 
-// 🔥 time formatter
+// ================= FORMAT =================
 fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60

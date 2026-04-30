@@ -9,19 +9,26 @@ data class WorkoutHistory(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
 
-    // 🔗 link με program
+    // 🔗 program reference
     val programId: Int,
-
     val programName: String,
 
-    val difficulty: String,
-
-    // timestamp (System.currentTimeMillis())
-    val date: Long,
-
+    // ⏱️ session info
+    val date: Long,                 // System.currentTimeMillis()
     val durationMinutes: Int,
 
+    // 📊 workout stats
     val totalExercises: Int,
+    val completedExercises: Int,
 
-    val completedExercises: Int
+    // 💪 total volume (KEY για chart)
+    val totalVolume: Float,
+
+    // 📅 time grouping (IMPORTANT for analytics)
+    val weekNumber: Int,
+    val month: Int,   // 👈 NEW (1–12)
+    val year: Int,
+
+    // 🎯 difficulty / load category
+    val difficulty: String
 )

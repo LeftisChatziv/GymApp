@@ -4,17 +4,22 @@ import androidx.room.*
 import com.example.myapplication.data.local.entity.*
 import com.example.myapplication.data.local.relation.ProgramExerciseItem
 import com.example.myapplication.data.local.relation.ProgramWithExercises
-
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProgramDao {
 
+    // ================= PROGRAMS =================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgram(program: Program): Long
 
     @Delete
     suspend fun deleteProgram(program: Program)
 
+    @Query("SELECT * FROM programs")
+    fun getProgramsFlow(): Flow<List<Program>>
+
+    // ================= CROSS REF =================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgramExerciseCrossRef(
         crossRef: ProgramExerciseCrossRef
@@ -36,7 +41,7 @@ interface ProgramDao {
         reps: Int,
         weight: Int,
         position: Int
-    ): Int
+    )
 
     @Query("""
         DELETE FROM program_exercise_cross_ref
@@ -51,6 +56,7 @@ interface ProgramDao {
     """)
     suspend fun deleteSingle(programId: Int, exerciseId: Int)
 
+    // ================= EXERCISES =================
     @Query("""
         SELECT 
             pxc.programId AS programId,
@@ -67,16 +73,4 @@ interface ProgramDao {
         ORDER BY pxc.position ASC
     """)
     suspend fun getProgramExercises(programId: Int): List<ProgramExerciseItem>
-
-    @Query("SELECT * FROM programs")
-    suspend fun getPrograms(): List<Program>
-
-    suspend fun getProgramsWithExercises(): List<ProgramWithExercises> {
-        return getPrograms().map { program ->
-            ProgramWithExercises(
-                program = program,
-                exercises = getProgramExercises(program.id) // ✅ ΤΑΙΡΙΑΖΕΙ ΠΛΕΟΝ
-            )
-        }
-    }
 }

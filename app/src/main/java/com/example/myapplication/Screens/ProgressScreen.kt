@@ -7,11 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.ProgressViewModel
 import com.example.myapplication.viewmodel.ProgramViewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
+import WeeklyVolumeChart
 
 @Composable
 fun ProgressScreen() {
@@ -24,7 +26,10 @@ fun ProgressScreen() {
     val programs by programViewModel.programs.collectAsState()
     val selectedProgramId by programViewModel.selectedProgramId.collectAsState()
 
-    // ================= SAFE PROGRAM =================
+    // ================= 🔥 REAL HISTORY FROM DB =================
+    val history by progressViewModel.history.collectAsState()
+
+    // ================= PROGRAM =================
     val selectedProgram = programs
         .firstOrNull { it.program.id == selectedProgramId }
 
@@ -40,7 +45,20 @@ fun ProgressScreen() {
         }
     }
 
-    // ================= SCROLL STATE =================
+    // ================= WEEKLY VOLUME =================
+    val weeklyVolume by remember(history) {
+        derivedStateOf {
+            progressViewModel.calculateWeeklyVolume(history)
+        }
+    }
+
+    // ================= RECOVERY =================
+    val recovery by remember(history) {
+        derivedStateOf {
+            progressViewModel.calculateRecoveryScore(history)
+        }
+    }
+
     val scrollState = rememberScrollState()
 
     Scaffold { padding ->
@@ -61,7 +79,7 @@ fun ProgressScreen() {
 
             Spacer(Modifier.height(16.dp))
 
-            // ================= BODY HEATMAP =================
+            // ================= HEATMAP =================
             BodyHeatmap(
                 muscleLoads = muscleLoads,
                 vm = progressViewModel
@@ -69,30 +87,48 @@ fun ProgressScreen() {
 
             Spacer(Modifier.height(24.dp))
 
-            // ================= WEEKLY SECTION =================
+            // ================= CHART =================
+            WeeklyVolumeChart(data = weeklyVolume)
+
+            Spacer(Modifier.height(24.dp))
+
+            // ================= INFO =================
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
 
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                Column(Modifier.padding(16.dp)) {
+
+                    Text("Weekly Progress")
+
+                    Text("Program: ${selectedProgram?.program?.name ?: "No program selected"}")
+
+                    Text("Exercises: ${programExercises.size}")
+
+                    // 🔥 ΤΩΡΑ ΘΑ ΔΟΥΛΕΥΕΙ
+                    Text("Sessions: ${history.size}")
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ================= RECOVERY =================
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+
+                Column(Modifier.padding(16.dp)) {
+
+                    Text("Recovery Score")
 
                     Text(
-                        text = "Weekly Progress",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Program: ${
-                            selectedProgram?.program?.name ?: "No program selected"
-                        }"
-                    )
-
-                    Text(
-                        text = "Exercises: ${programExercises.size}"
+                        text = "${recovery.toInt()}%",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = when {
+                            recovery > 70 -> Color(0xFF2E7D32)
+                            recovery > 40 -> Color(0xFFF9A825)
+                            else -> Color(0xFFC62828)
+                        }
                     )
                 }
             }

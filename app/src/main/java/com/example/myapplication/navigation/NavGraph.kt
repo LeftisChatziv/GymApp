@@ -156,7 +156,12 @@ fun NavGraph(
                     return@composable
                 }
 
-                WorkoutScreen(program)
+                WorkoutScreen(
+                    program = program,
+                    onGoToProgress = {
+                        navController.navigate("progress")
+                    }
+                )
             }
 
             composable("progress") {

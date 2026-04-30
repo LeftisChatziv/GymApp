@@ -1,7 +1,7 @@
 package com.example.myapplication.Screens
 
-
-
+import com.google.firebase.crashlytics.buildtools.reloc.org.apache.commons.io.FilenameUtils.normalize
+import java.text.Normalizer.normalize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,7 +24,8 @@ fun BodyHeatmap(
 ) {
 
     fun colorFor(muscle: String): Color {
-        return vm.getMuscleColor(muscleLoads[muscle] ?: 0f)
+        val key = normalize(muscle)
+        return vm.getMuscleColor(muscleLoads[key] ?: 0f)
     }
 
     val rows = listOf(
@@ -69,5 +70,14 @@ fun BodyHeatmap(
                 }
             }
         }
+    }
+}
+fun getMuscleColor(load: Float): Color {
+    return when {
+        load <= 0f -> Color(0xFFE0E0E0)
+        load < 5000f -> Color(0xFFFF6B6B)
+        load < 15000f -> Color(0xFFFFD93D)
+        load < 30000f -> Color(0xFF6BCB77)
+        else -> Color(0xFF4D96FF)
     }
 }
