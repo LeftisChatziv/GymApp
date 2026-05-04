@@ -20,18 +20,20 @@ fun MusicScreen(
 ) {
 
     val context = LocalContext.current
-    val songs by viewModel.songs.collectAsState()
 
-    var currentSong by remember { mutableStateOf<Song?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
+    val songs by viewModel.songs.collectAsState()
+    val currentPosition by viewModel.currentPosition.collectAsState()
+    val duration by viewModel.duration.collectAsState()
+    val currentSong by viewModel.currentSong.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🎧 My Music") },
+                title = { Text(text = "🎧 My Music") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Text("←") // μπορείς να το αλλάξεις σε Icon
+                        Text(text = "←")
                     }
                 }
             )
@@ -45,19 +47,16 @@ fun MusicScreen(
                 .padding(16.dp)
         ) {
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 items(songs) { song ->
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
-                            currentSong = song
                             viewModel.playSong(song, context)
-                            isPlaying = true
                         }
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -71,8 +70,36 @@ fun MusicScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // 🎚 PROGRESS BAR
+            if (currentSong != null && duration > 0) {
+
+                val progress =
+                    (currentPosition / duration.toFloat()).coerceIn(0f, 1f)
+
+                Column {
+
+                    Slider(
+                        value = progress,
+                        onValueChange = { newValue ->
+                            viewModel.seekTo((newValue * duration).toInt())
+                        }
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = formatMusicTime(currentPosition))
+                        Text(text = formatMusicTime(duration))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // 🎮 CONTROLS
             Card {
                 Row(
                     modifier = Modifier
@@ -81,22 +108,37 @@ fun MusicScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
 
-                    Button(onClick = { viewModel.previous(context) }) {
-                        Text("⏮")
+                    Button(onClick = {
+                        viewModel.previous(context)
+                    }) {
+                        Text(text = "⏮")
                     }
 
                     Button(onClick = {
-                        if (isPlaying) viewModel.pause() else viewModel.resume()
-                        isPlaying = !isPlaying
+                        if (isPlaying) {
+                            viewModel.pause()
+                        } else {
+                            viewModel.resume()
+                        }
                     }) {
-                        Text(if (isPlaying) "Pause" else "Play")
+                        Text(text = if (isPlaying) "Pause" else "Play")
                     }
 
-                    Button(onClick = { viewModel.next(context) }) {
-                        Text("⏭")
+                    Button(onClick = {
+                        viewModel.next(context)
+                    }) {
+                        Text(text = "⏭")
                     }
                 }
             }
         }
     }
+}
+
+// ⏱ FORMAT
+fun formatMusicTime(ms: Int): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
 }

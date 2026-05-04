@@ -31,4 +31,26 @@ class MusicPlayer {
         mediaPlayer?.release()
         mediaPlayer = null
     }
+
+    // 🔥 ΑΥΤΑ ΕΛΕΙΠΑΝ
+    fun getDuration(): Int {
+        return mediaPlayer?.duration ?: 0
+    }
+
+    fun getCurrentPosition(): Int {
+        return mediaPlayer?.currentPosition ?: 0
+    }
+
+    fun seekTo(position: Int) {
+        mediaPlayer?.seekTo(position)
+    }
+
+    fun isPlaying(): Boolean {
+        return mediaPlayer?.isPlaying ?: false
+    }
+
+    fun release() {
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
 }
