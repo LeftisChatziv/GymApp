@@ -18,6 +18,7 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 firebaseCrashlyticsBuildtools = "3.0.7"
 runtime = "1.11.0"
+foundation = "1.11.0"
 
 
 [plugins]
@@ -70,3 +71,4 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }

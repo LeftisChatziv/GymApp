@@ -23,9 +23,8 @@ fun BodyHeatmap(
     vm: ProgressViewModel
 ) {
 
-    fun colorFor(muscle: String): Color {
-        val key = normalize(muscle)
-        return vm.getMuscleColor(muscleLoads[key] ?: 0f)
+    val colorFor: (String) -> Color = { muscle ->
+        vm.getMuscleColor(muscleLoads[muscle] ?: 0f)
     }
 
     val rows = listOf(
@@ -40,7 +39,6 @@ fun BodyHeatmap(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
 
-        // head
         Box(
             Modifier
                 .size(60.dp)
@@ -58,9 +56,11 @@ fun BodyHeatmap(
 
                 row.forEachIndexed { index, muscle ->
 
+                    val load = muscleLoads[muscle] ?: 0f
+
                     Muscle(
-                        name = muscle,
-                        color = colorFor(muscle),
+                        name = "$muscle\n${load.toInt()}",
+                        color = vm.getMuscleColor(load),
                         width = if (row.size == 1) 140.dp else 90.dp
                     )
 
@@ -70,14 +70,5 @@ fun BodyHeatmap(
                 }
             }
         }
-    }
-}
-fun getMuscleColor(load: Float): Color {
-    return when {
-        load <= 0f -> Color(0xFFE0E0E0)
-        load < 5000f -> Color(0xFFFF6B6B)
-        load < 15000f -> Color(0xFFFFD93D)
-        load < 30000f -> Color(0xFF6BCB77)
-        else -> Color(0xFF4D96FF)
     }
 }

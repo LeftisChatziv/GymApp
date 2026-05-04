@@ -16,16 +16,9 @@ class MuscleConverters {
 
     @TypeConverter
     fun toList(data: String?): List<MuscleActivation> {
-        if (data.isNullOrBlank()) return emptyList()
+        if (data.isNullOrEmpty()) return emptyList()
 
-        return try {
-            val type = object : TypeToken<List<MuscleActivation>>() {}.type
-
-            @Suppress("UNCHECKED_CAST")
-            gson.fromJson<List<MuscleActivation>>(data, type)
-
-        } catch (e: Exception) {
-            emptyList()
-        }
+        val type = object : TypeToken<List<MuscleActivation>>() {}.type
+        return gson.fromJson(data, type)
     }
 }
