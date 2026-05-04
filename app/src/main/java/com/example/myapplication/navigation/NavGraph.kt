@@ -1,46 +1,20 @@
 package com.example.myapplication.navigation
 
 import androidx.compose.material3.*
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.navigation.compose.*
 import kotlinx.coroutines.launch
-import com.example.myapplication.viewmodel.ProgramViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.myapplication.viewmodel.ExerciseViewModel
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import com.example.myapplication.Screens.HomeScreen
-import com.example.myapplication.Screens.NavBar
-import com.example.myapplication.Screens.LoginScreen
-import com.example.myapplication.Screens.RegisterScreen
-import com.example.myapplication.Screens.ExercisesScreen
-import com.example.myapplication.Screens.ProgramScreen
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import com.example.myapplication.Screens.MusicScreen
-import com.example.myapplication.Screens.ProfileScreen
-import com.example.myapplication.Screens.ProgramDetailsScreen
-import com.example.myapplication.Screens.ProgressScreen
-import com.example.myapplication.Screens.WorkoutScreen
-import com.example.myapplication.viewmodel.MusicViewModel
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.platform.LocalContext
+
+import com.example.myapplication.viewmodel.*
+import com.example.myapplication.Screens.*
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavGraph(
@@ -54,8 +28,18 @@ fun NavGraph(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+
     val programViewModel: ProgramViewModel = viewModel()
     val exerciseViewModel: ExerciseViewModel = viewModel()
+
+    // ✅ GLOBAL MUSIC VIEWMODEL (NO CRASH)
+    val musicViewModel: MusicViewModel = viewModel()
+
+    val currentPosition by musicViewModel.currentPosition.collectAsState()
+    val duration by musicViewModel.duration.collectAsState()
+
+    var isPlaying by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -72,8 +56,9 @@ fun NavGraph(
 
                 Spacer(Modifier.height(16.dp))
                 Text("⚙ Settings", style = MaterialTheme.typography.titleLarge)
-                Divider()
+                HorizontalDivider()
 
+                // 🎧 GO TO MUSIC SCREEN
                 NavigationDrawerItem(
                     label = { Text("🎧 Music") },
                     selected = currentRoute == "music",
@@ -84,6 +69,76 @@ fun NavGraph(
                         scope.launch { drawerState.close() }
                     }
                 )
+
+                // ================= 🎵 MINI PLAYER =================
+
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    "🎵 Now Playing",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+
+                if (duration > 0) {
+
+                    val progress =
+                        (currentPosition / duration.toFloat()).coerceIn(0f, 1f)
+
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+
+                        Slider(
+                            value = progress,
+                            onValueChange = {
+                                musicViewModel.seekTo((it * duration).toInt())
+                            }
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(formatMiniTime(currentPosition))
+                            Text(formatMiniTime(duration))
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+
+                    Button(onClick = {
+                        musicViewModel.previous(context)
+                        isPlaying = true
+                    }) {
+                        Text("⏮")
+                    }
+
+                    Button(onClick = {
+                        if (isPlaying) {
+                            musicViewModel.pause()
+                        } else {
+                            musicViewModel.resume()
+                        }
+                        isPlaying = !isPlaying
+                    }) {
+                        Text(if (isPlaying) "Pause" else "Play")
+                    }
+
+                    Button(onClick = {
+                        musicViewModel.next(context)
+                        isPlaying = true
+                    }) {
+                        Text("⏭")
+                    }
+                }
+
+                // ================= SETTINGS =================
 
                 Row(
                     modifier = Modifier
@@ -234,15 +289,7 @@ fun NavGraph(
                     )
                 }
 
-                // 🔥 FIXED MUSIC SCREEN
-                composable("music") { backStackEntry ->
-
-                    val parentEntry = remember(backStackEntry) {
-                        navController.getBackStackEntry("home")
-                    }
-
-                    val musicViewModel: MusicViewModel = viewModel(parentEntry)
-
+                composable("music") {
                     MusicScreen(
                         viewModel = musicViewModel,
                         onBackClick = { navController.popBackStack() }
@@ -250,11 +297,17 @@ fun NavGraph(
                 }
 
                 composable("progress") { ProgressScreen() }
-
                 composable("profile") { ProfileScreen() }
-
                 composable("exercises") { ExercisesScreen() }
             }
         }
     }
+}
+
+// ⏱ TIME FORMAT
+fun formatMiniTime(ms: Int): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
 }

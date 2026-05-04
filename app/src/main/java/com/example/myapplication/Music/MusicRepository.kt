@@ -3,7 +3,6 @@ package com.example.myapplication.Music
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
-import com.example.myapplication.Music.Song
 
 class MusicRepository(private val context: Context) {
 
@@ -19,7 +18,18 @@ class MusicRepository(private val context: Context) {
             MediaStore.Audio.Media.ARTIST
         )
 
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+        // ✅ FILTER (VERY IMPORTANT)
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+
+        val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
+
+        context.contentResolver.query(
+            uri,
+            projection,
+            selection,
+            null,
+            sortOrder
+        )?.use { cursor ->
 
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -28,8 +38,8 @@ class MusicRepository(private val context: Context) {
             while (cursor.moveToNext()) {
 
                 val id = cursor.getLong(idCol)
-                val title = cursor.getString(titleCol)
-                val artist = cursor.getString(artistCol)
+                val title = cursor.getString(titleCol) ?: "Unknown"
+                val artist = cursor.getString(artistCol) ?: "Unknown"
 
                 val songUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
