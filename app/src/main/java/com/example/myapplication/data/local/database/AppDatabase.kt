@@ -15,9 +15,10 @@ import kotlinx.coroutines.launch
         Program::class,
         Exercise::class,
         ProgramExerciseCrossRef::class,
-        WorkoutHistory::class
+        WorkoutHistory::class,
+        UserStatsEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(MuscleConverters::class)
@@ -27,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun programExerciseDao(): ProgramExerciseDao
     abstract fun workoutHistoryDao(): WorkoutHistoryDao
+    abstract fun userStatsDao(): UserStatsDao
 
     companion object {
 
@@ -34,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
 
         fun getDatabase(context: Context): AppDatabase {
+
             return INSTANCE ?: synchronized(this) {
 
                 val instance = Room.databaseBuilder(
@@ -44,184 +47,250 @@ abstract class AppDatabase : RoomDatabase() {
                     .fallbackToDestructiveMigration()
                     .addCallback(object : Callback() {
 
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            super.onCreate(db)
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
 
-                            CoroutineScope(Dispatchers.IO).launch {
+                            INSTANCE?.let { database ->
 
-                                val database = INSTANCE ?: return@launch
-                                val dao = database.exerciseDao()
+                                CoroutineScope(Dispatchers.IO).launch {
 
-                                val exercises = listOf(
+                                    val exerciseDao = database.exerciseDao()
 
-                                    // 🏠 EASY (ΣΩΜΑ)
-                                    Exercise(
-                                        name = "Push-ups",
-                                        category = "Σώμα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Στήθος", 60),
-                                            MuscleActivation("Τρικέφαλα", 25),
-                                            MuscleActivation("Ώμοι", 15)
+                                    // ✔ SAFE CHECK
+                                    val existing = exerciseDao.getAllExercises()
+                                    if (existing.isNotEmpty()) return@launch
+
+                                    val exercises = listOf(
+
+                                        // ================= BODYWEIGHT =================
+
+                                        Exercise(
+                                            name = "Push-ups",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("στήθος", 60),
+                                                MuscleActivation("τρικέφαλα", 25),
+                                                MuscleActivation("ώμοι", 15)
+                                            ),
+                                            description = "Κλασικές κάμψεις",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Κλασικές κάμψεις",
-                                        difficulty = "Easy"
-                                    ),
 
-                                    Exercise(
-                                        name = "Plank",
-                                        category = "Σώμα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Κορμός", 80),
-                                            MuscleActivation("Ώμοι", 10),
-                                            MuscleActivation("Πλάτη", 10)
+                                        Exercise(
+                                            name = "Plank",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("κορμός", 80),
+                                                MuscleActivation("ώμοι", 10),
+                                                MuscleActivation("πλάτη", 10)
+                                            ),
+                                            description = "Σανίδα",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Σανίδα",
-                                        difficulty = "Easy"
-                                    ),
 
-                                    Exercise(
-                                        name = "Hollow Body",
-                                        category = "Σώμα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Κορμός", 90),
-                                            MuscleActivation("Πόδια", 10)
+                                        Exercise(
+                                            name = "Hollow Body",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("κορμός", 90),
+                                                MuscleActivation("πόδια", 10)
+                                            ),
+                                            description = "Hollow body hold",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Hollowman",
-                                        difficulty = "Easy"
-                                    ),
 
-                                    Exercise(
-                                        name = "Glute Bridge",
-                                        category = "Σώμα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Γλουτοί", 70),
-                                            MuscleActivation("Πόδια", 20),
-                                            MuscleActivation("Κορμός", 10)
+                                        Exercise(
+                                            name = "Glute Bridge",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("γλουτοί", 70),
+                                                MuscleActivation("πόδια", 20),
+                                                MuscleActivation("κορμός", 10)
+                                            ),
+                                            description = "Γέφυρα γλουτών",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Γέφυρα",
-                                        difficulty = "Easy"
-                                    ),
 
-                                    Exercise(
-                                        name = "Superman",
-                                        category = "Σώμα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πλάτη", 70),
-                                            MuscleActivation("Κορμός", 30)
+                                        Exercise(
+                                            name = "Superman",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πλάτη", 70),
+                                                MuscleActivation("κορμός", 30)
+                                            ),
+                                            description = "Άσκηση πλάτης",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Superman",
-                                        difficulty = "Easy"
-                                    ),
 
-                                    // 🏋️ HARD (ΒΑΡΑΚΙΑ)
-                                    Exercise(
-                                        name = "Barbell Bench Press",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Στήθος", 70),
-                                            MuscleActivation("Τρικέφαλα", 20),
-                                            MuscleActivation("Ώμοι", 10)
+                                        Exercise(
+                                            name = "Burpees",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πόδια", 40),
+                                                MuscleActivation("στήθος", 30),
+                                                MuscleActivation("κορμός", 30)
+                                            ),
+                                            description = "Burpees",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Bench press",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Barbell Back Squat",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πόδια", 70),
-                                            MuscleActivation("Γλουτοί", 20),
-                                            MuscleActivation("Κορμός", 10)
+                                        Exercise(
+                                            name = "Mountain Climbers",
+                                            category = "Σώμα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("κορμός", 50),
+                                                MuscleActivation("πόδια", 30),
+                                                MuscleActivation("ώμοι", 20)
+                                            ),
+                                            description = "Mountain climbers",
+                                            difficulty = "Easy"
                                         ),
-                                        description = "Squat",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Front Squat",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πόδια", 75),
-                                            MuscleActivation("Κορμός", 15),
-                                            MuscleActivation("Γλουτοί", 10)
-                                        ),
-                                        description = "Front squat",
-                                        difficulty = "Hard"
-                                    ),
+                                        // ================= WEIGHTS =================
 
-                                    Exercise(
-                                        name = "Deadlift",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πλάτη", 50),
-                                            MuscleActivation("Πόδια", 30),
-                                            MuscleActivation("Κορμός", 20)
+                                        Exercise(
+                                            name = "Barbell Bench Press",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("στήθος", 70),
+                                                MuscleActivation("τρικέφαλα", 20),
+                                                MuscleActivation("ώμοι", 10)
+                                            ),
+                                            description = "Bench press",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Deadlift",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Standing Overhead Press",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Ώμοι", 70),
-                                            MuscleActivation("Τρικέφαλα", 20),
-                                            MuscleActivation("Κορμός", 10)
+                                        Exercise(
+                                            name = "Barbell Back Squat",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πόδια", 70),
+                                                MuscleActivation("γλουτοί", 20),
+                                                MuscleActivation("κορμός", 10)
+                                            ),
+                                            description = "Back squat",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Shoulder press",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Arnold Press",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Ώμοι", 75),
-                                            MuscleActivation("Τρικέφαλα", 15),
-                                            MuscleActivation("Κορμός", 10)
+                                        Exercise(
+                                            name = "Front Squat",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πόδια", 75),
+                                                MuscleActivation("κορμός", 15),
+                                                MuscleActivation("γλουτοί", 10)
+                                            ),
+                                            description = "Front squat",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Arnold press",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Lateral Raise",
-                                        category = "Βαράκια",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Ώμοι", 90),
-                                            MuscleActivation("Τραπεζοειδής", 10)
+                                        Exercise(
+                                            name = "Deadlift",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πλάτη", 50),
+                                                MuscleActivation("πόδια", 30),
+                                                MuscleActivation("κορμός", 20)
+                                            ),
+                                            description = "Deadlift",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Lateral raise",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Pull-ups",
-                                        category = "Όργανα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πλάτη", 65),
-                                            MuscleActivation("Δικέφαλα", 25),
-                                            MuscleActivation("Ώμοι", 10)
+                                        Exercise(
+                                            name = "Standing Overhead Press",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("ώμοι", 70),
+                                                MuscleActivation("τρικέφαλα", 20),
+                                                MuscleActivation("κορμός", 10)
+                                            ),
+                                            description = "Shoulder press",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Pull ups",
-                                        difficulty = "Hard"
-                                    ),
 
-                                    Exercise(
-                                        name = "Leg Press",
-                                        category = "Όργανα",
-                                        muscleGroups = listOf(
-                                            MuscleActivation("Πόδια", 80),
-                                            MuscleActivation("Γλουτοί", 20)
+                                        Exercise(
+                                            name = "Arnold Press",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("ώμοι", 75),
+                                                MuscleActivation("τρικέφαλα", 15),
+                                                MuscleActivation("κορμός", 10)
+                                            ),
+                                            description = "Arnold press",
+                                            difficulty = "Hard"
                                         ),
-                                        description = "Leg press",
-                                        difficulty = "Hard"
+
+                                        Exercise(
+                                            name = "Lateral Raise",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("ώμοι", 90),
+                                                MuscleActivation("τραπεζοειδής", 10)
+                                            ),
+                                            description = "Lateral raise",
+                                            difficulty = "Easy"
+                                        ),
+
+                                        Exercise(
+                                            name = "Bicep Curl",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("δικέφαλα", 90),
+                                                MuscleActivation("πήχεις", 10)
+                                            ),
+                                            description = "Bicep curls",
+                                            difficulty = "Easy"
+                                        ),
+
+                                        Exercise(
+                                            name = "Triceps Extension",
+                                            category = "Βαράκια",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("τρικέφαλα", 90),
+                                                MuscleActivation("ώμοι", 10)
+                                            ),
+                                            description = "Triceps extensions",
+                                            difficulty = "Easy"
+                                        ),
+
+                                        // ================= MACHINES =================
+
+                                        Exercise(
+                                            name = "Pull-ups",
+                                            category = "Όργανα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πλάτη", 65),
+                                                MuscleActivation("δικέφαλα", 25),
+                                                MuscleActivation("ώμοι", 10)
+                                            ),
+                                            description = "Pull-ups",
+                                            difficulty = "Hard"
+                                        ),
+
+                                        Exercise(
+                                            name = "Lat Pulldown",
+                                            category = "Όργανα",
+                                            muscleGroups = listOf(
+                                                MuscleActivation("πλάτη", 75),
+                                                MuscleActivation("δικέφαλα", 25)
+                                            ),
+                                            description = "Lat pulldown",
+                                            difficulty = "Easy"
+                                        )
                                     )
-                                )
 
-                                dao.insertAll(exercises)
+                                    exerciseDao.insertAll(exercises)
+
+                                    database.userStatsDao().insertOrUpdate(
+                                        UserStatsEntity(
+                                            uid = "demo",
+                                            score = 0.0,
+                                            streak = 0,
+                                            totalWorkouts = 0,
+                                            lastWorkoutDate = 0L
+                                        )
+                                    )
+                                }
                             }
                         }
                     })

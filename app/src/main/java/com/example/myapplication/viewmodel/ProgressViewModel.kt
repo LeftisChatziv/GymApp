@@ -1,21 +1,22 @@
 package com.example.myapplication.viewmodel
 
 import android.app.Application
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.compose.ui.graphics.Color
 import com.example.myapplication.data.local.database.AppDatabase
 import com.example.myapplication.data.local.entity.Exercise
 import com.example.myapplication.data.local.entity.WorkoutHistory
 import com.example.myapplication.data.local.relation.ProgramExerciseItem
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import java.util.*
 
 class ProgressViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getDatabase(application).workoutHistoryDao()
 
-    // ================= REAL DATA =================
     val history: StateFlow<List<WorkoutHistory>> =
         dao.getAllFlow()
             .stateIn(
@@ -24,22 +25,44 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 emptyList()
             )
 
-    // ================= NORMALIZE MUSCLE KEY =================
+    // ================= NORMALIZE MUSCLES =================
     private fun normalizeMuscle(name: String): String {
-        return name
-            .trim()
-            .lowercase()
-            .replace("ς", "σ") // optional greek safety
+        return when (name.trim().lowercase()) {
+
+            "chest", "στήθος" -> "στήθος"
+            "back", "πλάτη" -> "πλάτη"
+            "legs", "πόδια" -> "πόδια"
+
+            "shoulders", "shoulder", "ώμοι", "ωμοι" -> "ώμοι"
+
+            "biceps", "δικέφαλα" -> "δικέφαλα"
+
+            "triceps", "tricep", "τρικέφαλα" -> "τρικέφαλα"
+
+            "core", "κορμός" -> "κορμός"
+
+            "traps", "τραπεζοειδής" -> "τραπεζοειδής"
+
+            "glutes", "γλουτοί" -> "γλουτοί"
+
+            "forearms", "πήχεις" -> "πήχεις"
+
+            else -> name.trim().lowercase()
+        }
     }
 
     // ================= MUSCLE LOAD =================
     fun calculateMuscleLoad(
         programExercises: List<ProgramExerciseItem>,
         exercises: List<Exercise>
-    ): Map<String, Float> {
+    ): Map<String, Int> {
+
+        if (programExercises.isEmpty() || exercises.isEmpty()) {
+            return emptyMap()
+        }
 
         val exerciseMap = exercises.associateBy { it.id }
-        val muscleLoad = mutableMapOf<String, Float>()
+        val result = mutableMapOf<String, Int>()
 
         programExercises.forEach { item ->
 
@@ -47,21 +70,24 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
             val volume = item.sets * item.reps * item.weight
 
-            exercise.muscleGroups.forEach { activation ->
+            exercise.muscleGroups.forEach { mg ->
 
-                val key = normalizeMuscle(activation.muscle)
+                val key = normalizeMuscle(mg.muscle)
+                val contribution = volume * (mg.percentage / 100f)
 
-                val load = volume * (activation.percentage / 100f)
-
-                muscleLoad[key] =
-                    muscleLoad.getOrDefault(key, 0f) + load
+                result[key] = (result[key] ?: 0) + contribution.toInt()
             }
         }
 
-        return muscleLoad
+        println("=== FINAL MUSCLE MAP ===")
+        result.forEach { (k, v) ->
+            println("$k -> $v")
+        }
+
+        return result
     }
 
-    // ================= WEEKLY =================
+    // ================= WEEKLY VOLUME =================
     fun calculateWeeklyVolume(history: List<WorkoutHistory>): List<Float> {
 
         val result = MutableList(7) { 0f }
@@ -71,24 +97,14 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             val cal = Calendar.getInstance()
             cal.timeInMillis = it.date
 
-            val day = when (cal.get(Calendar.DAY_OF_WEEK)) {
-                Calendar.MONDAY -> 0
-                Calendar.TUESDAY -> 1
-                Calendar.WEDNESDAY -> 2
-                Calendar.THURSDAY -> 3
-                Calendar.FRIDAY -> 4
-                Calendar.SATURDAY -> 5
-                Calendar.SUNDAY -> 6
-                else -> 0
-            }
-
+            val day = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7
             result[day] += it.totalVolume
         }
 
         return result
     }
 
-    // ================= RECOVERY =================
+    // ================= RECOVERY SCORE =================
     fun calculateRecoveryScore(history: List<WorkoutHistory>): Float {
 
         if (history.isEmpty()) return 100f
@@ -111,13 +127,13 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             .coerceIn(0f, 100f)
     }
 
-    // ================= COLOR SCALE =================
-    fun getMuscleColor(load: Float): Color {
+    // ================= COLOR =================
+    fun getMuscleColor(load: Int): Color {
         return when {
-            load <= 0f -> Color(0xFFE0E0E0)
-            load < 5000f -> Color(0xFFFF6B6B)
-            load < 15000f -> Color(0xFFFFD93D)
-            load < 30000f -> Color(0xFF6BCB77)
+            load <= 0 -> Color(0xFFE0E0E0)
+            load < 5000 -> Color(0xFFFF6B6B)
+            load < 15000 -> Color(0xFFFFD93D)
+            load < 30000 -> Color(0xFF6BCB77)
             else -> Color(0xFF4D96FF)
         }
     }

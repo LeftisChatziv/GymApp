@@ -13,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
@@ -21,26 +22,10 @@ import kotlinx.coroutines.launch
 import com.example.myapplication.viewmodel.ProgramViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import com.example.myapplication.Screens.HomeScreen
-import com.example.myapplication.Screens.NavBar
-import com.example.myapplication.Screens.LoginScreen
-import com.example.myapplication.Screens.RegisterScreen
-import com.example.myapplication.Screens.ExercisesScreen
-import com.example.myapplication.Screens.ProgramScreen
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import com.example.myapplication.Screens.MusicScreen
-import com.example.myapplication.Screens.ProfileScreen
-import com.example.myapplication.Screens.ProgramDetailsScreen
-import com.example.myapplication.Screens.ProgressScreen
-import com.example.myapplication.Screens.WorkoutScreen
+import androidx.compose.foundation.layout.*
+import com.example.myapplication.Screens.*
 import com.example.myapplication.viewmodel.MusicViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavGraph(
@@ -56,6 +41,10 @@ fun NavGraph(
 
     val programViewModel: ProgramViewModel = viewModel()
     val exerciseViewModel: ExerciseViewModel = viewModel()
+
+    // ✅ FIX: global scope values
+    val exercisesPool by exerciseViewModel.exercises.collectAsState(initial = emptyList())
+    var userWeight by remember { mutableIntStateOf(70) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -194,7 +183,6 @@ fun NavGraph(
 
                     val programs by programViewModel.programs.collectAsState()
                     val selectedId by programViewModel.selectedProgramId.collectAsState()
-                    val exercisesPool by exerciseViewModel.exercises.collectAsState(initial = emptyList())
 
                     val program = programs.firstOrNull { it.program.id == selectedId }
 
@@ -230,11 +218,12 @@ fun NavGraph(
 
                     WorkoutScreen(
                         program = program,
+                        exercisePool = exercisesPool,
+                        userWeight = userWeight,
                         onGoToProgress = { navController.navigate("progress") }
                     )
                 }
 
-                // 🔥 FIXED MUSIC SCREEN
                 composable("music") { backStackEntry ->
 
                     val parentEntry = remember(backStackEntry) {

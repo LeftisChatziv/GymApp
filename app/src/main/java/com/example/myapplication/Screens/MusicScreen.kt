@@ -1,11 +1,13 @@
 package com.example.myapplication.Screens
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,107 +29,195 @@ fun MusicScreen(
     val currentSong by viewModel.currentSong.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
+    val configuration = LocalConfiguration.current
+    val isLandscape =
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "🎧 My Music") },
+                title = { Text("🎧 My Music") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Text(text = "←")
+                        Text("←")
                     }
                 }
             )
         }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
+        if (isLandscape) {
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f)
+            // ================= LANDSCAPE =================
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(songs) { song ->
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            viewModel.playSong(song, context)
-                        }
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = song.title)
-                            Text(
-                                text = song.artist,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 🎚 PROGRESS BAR
-            if (currentSong != null && duration > 0) {
-
-                val progress =
-                    (currentPosition / duration.toFloat()).coerceIn(0f, 1f)
-
-                Column {
-
-                    Slider(
-                        value = progress,
-                        onValueChange = { newValue ->
-                            viewModel.seekTo((newValue * duration).toInt())
-                        }
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = formatMusicTime(currentPosition))
-                        Text(text = formatMusicTime(duration))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // 🎮 CONTROLS
-            Card {
-                Row(
+                // 🎵 LEFT: SONG LIST
+                LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(songs) { song ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { viewModel.playSong(song, context) }
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(song.title)
+                                Text(
+                                    song.artist,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 🎮 RIGHT: CONTROLS
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center
                 ) {
 
-                    Button(onClick = {
-                        viewModel.previous(context)
-                    }) {
-                        Text(text = "⏮")
-                    }
+                    if (currentSong != null && duration > 0) {
 
-                    Button(onClick = {
-                        if (isPlaying) {
-                            viewModel.pause()
-                        } else {
-                            viewModel.resume()
+                        val progress =
+                            (currentPosition / duration.toFloat()).coerceIn(0f, 1f)
+
+                        Slider(
+                            value = progress,
+                            onValueChange = {
+                                viewModel.seekTo((it * duration).toInt())
+                            }
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(formatMusicTime(currentPosition))
+                            Text(formatMusicTime(duration))
                         }
-                    }) {
-                        Text(text = if (isPlaying) "Pause" else "Play")
+
+                        Spacer(Modifier.height(24.dp))
                     }
 
-                    Button(onClick = {
-                        viewModel.next(context)
-                    }) {
-                        Text(text = "⏭")
+                    Card {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+
+                            Button(onClick = { viewModel.previous(context) }) {
+                                Text("⏮")
+                            }
+
+                            Button(onClick = {
+                                if (isPlaying) viewModel.pause()
+                                else viewModel.resume()
+                            }) {
+                                Text(if (isPlaying) "Pause" else "Play")
+                            }
+
+                            Button(onClick = { viewModel.next(context) }) {
+                                Text("⏭")
+                            }
+                        }
+                    }
+                }
+            }
+
+        } else {
+
+            // ================= PORTRAIT =================
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+            ) {
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(songs) { song ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { viewModel.playSong(song, context) }
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(song.title)
+                                Text(
+                                    song.artist,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                if (currentSong != null && duration > 0) {
+
+                    val progress =
+                        (currentPosition / duration.toFloat()).coerceIn(0f, 1f)
+
+                    Column {
+
+                        Slider(
+                            value = progress,
+                            onValueChange = {
+                                viewModel.seekTo((it * duration).toInt())
+                            }
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(formatMusicTime(currentPosition))
+                            Text(formatMusicTime(duration))
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                Card {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+
+                        Button(onClick = { viewModel.previous(context) }) {
+                            Text("⏮")
+                        }
+
+                        Button(onClick = {
+                            if (isPlaying) viewModel.pause()
+                            else viewModel.resume()
+                        }) {
+                            Text(if (isPlaying) "Pause" else "Play")
+                        }
+
+                        Button(onClick = { viewModel.next(context) }) {
+                            Text("⏭")
+                        }
                     }
                 }
             }
@@ -135,7 +225,6 @@ fun MusicScreen(
     }
 }
 
-// ⏱ FORMAT
 fun formatMusicTime(ms: Int): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60

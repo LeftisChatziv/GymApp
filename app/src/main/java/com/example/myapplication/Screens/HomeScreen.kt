@@ -1,6 +1,8 @@
 package com.example.myapplication.Screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,18 +23,26 @@ fun HomeScreen(
     val auth = FirebaseAuth.getInstance()
     val firestore = FirebaseFirestore.getInstance()
 
-    val currentUser = auth.currentUser
-    val userEmail = currentUser?.email ?: "User"
-    val uid = currentUser?.uid
+    val user = auth.currentUser
+    val uid = user?.uid
 
-    var rank by remember { mutableStateOf("Loading...") }
+    var name by remember { mutableStateOf("User") }
+    var rank by remember { mutableStateOf("Beginner") }
+
+    // leaderboard stats
+    var streak by remember { mutableStateOf(0) }
+    var totalWorkouts by remember { mutableStateOf(0) }
 
     val colors = MaterialTheme.colorScheme
 
+    // ================= LOAD DATA =================
     LaunchedEffect(uid) {
+
         if (uid != null) {
+
             try {
-                val snapshot = firestore
+                // PROFILE
+                val profile = firestore
                     .collection("Users")
                     .document(uid)
                     .collection("profile")
@@ -40,10 +50,21 @@ fun HomeScreen(
                     .get()
                     .await()
 
-                rank = snapshot.getString("rank") ?: "Beginner"
+                name = profile.getString("name") ?: "User"
+                rank = profile.getString("rank") ?: "Beginner"
+
+                // LEADERBOARD
+                val lb = firestore
+                    .collection("leaderboard")
+                    .document(uid)
+                    .get()
+                    .await()
+
+                streak = (lb.getLong("streak") ?: 0L).toInt()
+                totalWorkouts = (lb.getLong("totalWorkouts") ?: 0L).toInt()
 
             } catch (e: Exception) {
-                rank = "Error"
+                name = user?.email ?: "User"
             }
         }
     }
@@ -56,12 +77,13 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
 
             // ================= HEADER =================
             Text(
-                "🏠 Home",
+                text = "🏠 Home",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.onBackground
@@ -70,29 +92,31 @@ fun HomeScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Welcome back, $userEmail",
-                color = colors.onSurfaceVariant
+                text = "Welcome back, $name 👋",
+                color = colors.onSurfaceVariant,
+                fontSize = 16.sp
             )
 
             Text(
-                "Rank: $rank 🏆",
+                text = "Rank: $rank 🏆",
                 color = colors.primary,
                 fontWeight = FontWeight.SemiBold
             )
 
             Spacer(Modifier.height(24.dp))
 
-            // ================= DASHBOARD CARD =================
+            // ================= WEEKLY CARD =================
             DashboardCard(
                 title = "Weekly Activity",
-                subtitle = "You completed 4 workouts 💪",
+                subtitle = "Keep pushing your limits 💪",
                 icon = painterResource(id = R.drawable.exercise)
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
+            // ================= MONTHLY STATS =================
             Text(
-                "Monthly Stats",
+                text = "Stats",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.onBackground
@@ -107,30 +131,31 @@ fun HomeScreen(
 
                 StatCard(
                     modifier = Modifier.weight(1f),
-                    title = "12",
+                    title = totalWorkouts.toString(),
                     subtitle = "Workouts",
                     icon = painterResource(id = R.drawable.trendingup)
                 )
 
                 StatCard(
                     modifier = Modifier.weight(1f),
-                    title = "540",
-                    subtitle = "Minutes",
-                    icon = painterResource(id = R.drawable.schedule)
+                    title = streak.toString(),
+                    subtitle = "Streak 🔥",
+                    icon = painterResource(id = R.drawable.localfiredepartment)
                 )
 
                 StatCard(
                     modifier = Modifier.weight(1f),
-                    title = "3250",
-                    subtitle = "Calories",
-                    icon = painterResource(id = R.drawable.localfiredepartment)
+                    title = rank,
+                    subtitle = "Rank",
+                    icon = painterResource(id = R.drawable.star)
                 )
             }
 
             Spacer(Modifier.height(24.dp))
 
+            // ================= NEXT WORKOUT =================
             Text(
-                "Next Workout",
+                text = "Next Workout",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.onBackground
@@ -144,8 +169,9 @@ fun HomeScreen(
                 time = "18:30"
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(30.dp))
 
+            // ================= LOGOUT =================
             Button(
                 onClick = {
                     auth.signOut()
@@ -154,6 +180,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(55.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.primary,
                     contentColor = colors.onPrimary
@@ -161,6 +188,8 @@ fun HomeScreen(
             ) {
                 Text("Logout")
             }
+
+            Spacer(Modifier.height(20.dp))
         }
     }
 }

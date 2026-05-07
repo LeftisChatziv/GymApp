@@ -63,5 +63,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
 
     // TEST
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     testImplementation("junit:junit:4.13.2")
 }

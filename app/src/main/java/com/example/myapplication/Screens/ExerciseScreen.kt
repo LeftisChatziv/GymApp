@@ -1,25 +1,30 @@
 package com.example.myapplication.Screens
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
+
 @Composable
 fun ExercisesScreen(
     viewModel: ExerciseViewModel = viewModel()
 ) {
 
     var search by remember { mutableStateOf("") }
-
-    // 🔥 2 ΑΝΕΞΑΡΤΗΤΑ FILTERS
     var selectedCategory by remember { mutableStateOf("Όλα") }
     var selectedDifficulty by remember { mutableStateOf("Όλα") }
 
@@ -28,7 +33,6 @@ fun ExercisesScreen(
 
     val exercises by viewModel.exercises.collectAsState(initial = emptyList())
 
-    // 🔥 COMBINED FILTER
     val filteredExercises = remember(
         exercises,
         search,
@@ -54,10 +58,15 @@ fun ExercisesScreen(
 
     val colors = MaterialTheme.colorScheme
 
+    val configuration = LocalConfiguration.current
+    val isLandscape =
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            .verticalScroll(rememberScrollState()) // 🔥 FULL SCREEN SCROLL
             .padding(16.dp)
     ) {
 
@@ -93,7 +102,7 @@ fun ExercisesScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 🔥 DIFFICULTY FILTER (ΞΕΧΩΡΙΣΤΟ)
+        // 🔥 DIFFICULTY FILTER
         Text("Δυσκολία")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             difficulties.forEach { diff ->
@@ -107,11 +116,36 @@ fun ExercisesScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(filteredExercises) { exercise ->
-                ExerciseCard(exercise)
+        // =======================
+        // 📱 LIST / GRID CONTENT
+        // =======================
+
+        if (isLandscape) {
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(800.dp) // allows outer scroll to work
+            ) {
+                items(filteredExercises) { exercise ->
+                    ExerciseCard(exercise)
+                }
+            }
+
+        } else {
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(800.dp)
+            ) {
+                items(filteredExercises) { exercise ->
+                    ExerciseCard(exercise)
+                }
             }
         }
     }

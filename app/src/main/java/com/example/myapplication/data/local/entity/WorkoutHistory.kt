@@ -30,5 +30,6 @@ data class WorkoutHistory(
     val year: Int,
 
     // 🎯 difficulty / load category
-    val difficulty: String
+    val difficulty: String,
+
 )

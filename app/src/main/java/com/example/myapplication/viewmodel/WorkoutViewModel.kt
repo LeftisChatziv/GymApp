@@ -5,57 +5,71 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.database.AppDatabase
 import com.example.myapplication.data.local.entity.WorkoutHistory
+import com.example.myapplication.data.local.relation.ProgramExerciseItem
+import com.example.myapplication.data.local.repository.UserStatsRepository
 import kotlinx.coroutines.launch
 import java.util.Calendar
+class WorkoutViewModel(
+    application: Application
+) : AndroidViewModel(application) {
 
-class WorkoutViewModel(application: Application) : AndroidViewModel(application) {
+    private val db =
+        AppDatabase.getDatabase(application)
 
-    private val dao = AppDatabase.getDatabase(application).workoutHistoryDao()
+    private val historyDao =
+        db.workoutHistoryDao()
 
+    private val statsRepository =
+        UserStatsRepository(
+            dao = db.userStatsDao(),
+            exerciseDao = db.exerciseDao(),
+            context = application
+        )
+
+    // ================= SAVE HISTORY =================
     fun saveWorkoutHistory(
         programId: Int,
         programName: String,
-        exerciseName: String,
-        sets: Int,
-        reps: Int,
-        weight: Int,
-        duration: Int,
+        durationSeconds: Int,
         totalExercises: Int,
-        completedExercises: Int
+        completedExercises: Int,
+        exercises: List<ProgramExerciseItem>
     ) {
-        viewModelScope.launch {
 
-            // 🔥 volume ασφαλές (αν weight = 0 δεν χαλάει τίποτα)
-            val volume = sets * reps * weight + 100
+        viewModelScope.launch {
 
             val calendar = Calendar.getInstance()
 
-            val date = calendar.timeInMillis
-            val week = calendar.get(Calendar.WEEK_OF_YEAR)
-            val year = calendar.get(Calendar.YEAR)
-            val month = calendar.get(Calendar.MONTH) + 1 // ✔️ FIX: 0-based month -> 1-12
+            val totalVolume = exercises.sumOf { ex ->
+                (ex.sets * ex.reps * ex.weight).toDouble()
+            }.toFloat()
 
-            dao.insert(
-                WorkoutHistory(
-                    programId = programId,
-                    programName = programName,
-                    date = date,
-
-                    // ✔️ πιο σωστό rounding
-                    durationMinutes = (duration / 60f).toInt(),
-
-                    totalExercises = totalExercises,
-                    completedExercises = completedExercises,
-
-                    totalVolume = volume.toFloat(),
-
-                    weekNumber = week,
-                    year = year,
-                    month = month,
-
-                    difficulty = "medium" // ή ό,τι θες default
-                )
+            val history = WorkoutHistory(
+                programId = programId,
+                programName = programName,
+                date = calendar.timeInMillis,
+                durationMinutes = durationSeconds / 60,
+                totalExercises = totalExercises,
+                completedExercises = completedExercises,
+                totalVolume = totalVolume,
+                weekNumber = calendar.get(Calendar.WEEK_OF_YEAR),
+                month = calendar.get(Calendar.MONTH) + 1,
+                year = calendar.get(Calendar.YEAR),
+                difficulty = "medium"
             )
+
+            historyDao.insert(history)
+        }
+    }
+
+    // ================= COMPLETE SESSION =================
+    fun completeWorkoutSession(
+        uid: String,
+        exercises: List<ProgramExerciseItem>
+    ) {
+
+        viewModelScope.launch {
+            statsRepository.completeWorkout(uid, exercises)
         }
     }
 }

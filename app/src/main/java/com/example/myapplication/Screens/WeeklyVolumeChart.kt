@@ -1,16 +1,23 @@
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-
 @Composable
 fun WeeklyVolumeChart(data: List<Float>) {
 
-    val maxValue = (data.maxOrNull() ?: 1f)
+    val safeData =
+        if (data.size == 7) data
+        else (data + List(7 - data.size) { 0f }).take(7)
+
+    val maxValue = (safeData.maxOrNull() ?: 1f).coerceAtLeast(1f)
 
     Column {
 
@@ -24,52 +31,41 @@ fun WeeklyVolumeChart(data: List<Float>) {
                 .height(220.dp)
         ) {
 
-            val widthStep = size.width / 6f
-            val height = size.height
+            val w = size.width
+            val h = size.height
+            val step = w / 6f
 
-            // ================= AXES =================
-            drawLine(
-                color = Color.Gray,
-                start = Offset(0f, height),
-                end = Offset(size.width, height),
-                strokeWidth = 4f
-            )
+            drawLine(Color.Gray, Offset(0f, h), Offset(w, h), 3f)
+            drawLine(Color.Gray, Offset(0f, 0f), Offset(0f, h), 3f)
 
-            drawLine(
-                color = Color.Gray,
-                start = Offset(0f, 0f),
-                end = Offset(0f, height),
-                strokeWidth = 4f
-            )
+            val path = Path()
 
-            // ================= LINE GRAPH =================
-            for (i in 0 until data.lastIndex) {
+            safeData.forEachIndexed { i, v ->
 
-                val x1 = i * widthStep
-                val y1 = height - (data[i] / maxValue) * height
+                val x = i * step
+                val y = h - (v / maxValue) * h
 
-                val x2 = (i + 1) * widthStep
-                val y2 = height - (data[i + 1] / maxValue) * height
+                if (i == 0) path.moveTo(x, y)
+                else path.lineTo(x, y)
 
-                drawLine(
-                    color = Color.Blue,
-                    start = Offset(x1, y1),
-                    end = Offset(x2, y2),
-                    strokeWidth = 5f
-                )
+                drawCircle(Color.Blue, 8f, Offset(x, y))
             }
+
+            drawPath(
+                path = path,
+                color = Color.Blue,
+                style = Stroke(width = 6f, cap = StrokeCap.Round)
+            )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // ================= DAYS LABELS =================
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun").forEach {
-                Text(it)
-            }
+            listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+                .forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
