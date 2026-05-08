@@ -15,6 +15,8 @@ import com.example.myapplication.data.local.entity.*
 import com.example.myapplication.data.local.relation.ProgramWithExercises
 import com.example.myapplication.viewmodel.ProgramViewModel
 import com.example.myapplication.viewmodel.ExerciseViewModel
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 @Composable
 fun ProgramScreen(
@@ -24,6 +26,11 @@ fun ProgramScreen(
     val programViewModel: ProgramViewModel = viewModel()
     val exerciseViewModel: ExerciseViewModel = viewModel()
 
+    // 🔥 AUTO RELOAD WHEN ENTERING SCREEN
+    LaunchedEffect(Unit) {
+        programViewModel.refreshPrograms()
+    }
+
     val programs by programViewModel.programs.collectAsState()
     val exercises by exerciseViewModel.exercises.collectAsState(initial = emptyList())
 
@@ -32,7 +39,6 @@ fun ProgramScreen(
 
     val selectedDays = remember { mutableStateListOf<String>() }
 
-    // ✅ μόνο UI state (ΟΧΙ DB object)
     data class TempExercise(
         val exerciseId: Int,
         val sets: Int,
@@ -92,10 +98,9 @@ fun ProgramScreen(
 
                 TextButton(onClick = {
 
-                    // 🔥 FIX: convert UI → DB model σωστά
                     val crossRefs = selectedExercises.values.mapIndexed { index, item ->
                         ProgramExerciseCrossRef(
-                            programId = 0, // ❗ αγνοείται, μπαίνει στο ViewModel
+                            programId = 0,
                             exerciseId = item.exerciseId,
                             sets = item.sets,
                             reps = item.reps,
@@ -109,6 +114,9 @@ fun ProgramScreen(
                         days = selectedDays.toList(),
                         exercises = crossRefs
                     )
+
+                    // 🔥 optional extra refresh (safe)
+                    programViewModel.refreshPrograms()
 
                     showDialog = false
                     title = ""
@@ -140,8 +148,13 @@ fun ProgramScreen(
 
                     Spacer(Modifier.height(10.dp))
 
-                    Row {
-                        listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun").forEach { day ->
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEach { day ->
 
                             val selected = selectedDays.contains(day)
 
@@ -151,7 +164,16 @@ fun ProgramScreen(
                                     if (selected) selectedDays.remove(day)
                                     else selectedDays.add(day)
                                 },
-                                label = { Text(day) }
+                                label = {
+                                    Text(
+                                        text = day,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
                         }
                     }

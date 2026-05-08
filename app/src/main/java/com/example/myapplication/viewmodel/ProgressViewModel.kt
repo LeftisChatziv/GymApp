@@ -15,17 +15,19 @@ import java.util.*
 
 class ProgressViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = AppDatabase.getDatabase(application).workoutHistoryDao()
+    private val historyDao =
+        AppDatabase.getDatabase(application).workoutHistoryDao()
 
+    // ================= HISTORY =================
     val history: StateFlow<List<WorkoutHistory>> =
-        dao.getAllFlow()
+        historyDao.getAllFlow()
             .stateIn(
                 viewModelScope,
-                SharingStarted.WhileSubscribed(5000),
+                SharingStarted.WhileSubscribed(5_000),
                 emptyList()
             )
 
-    // ================= NORMALIZE MUSCLES =================
+    // ================= MUSCLE NORMALIZER =================
     private fun normalizeMuscle(name: String): String {
         return when (name.trim().lowercase()) {
 
@@ -51,7 +53,9 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // ================= MUSCLE LOAD =================
+    // =========================================================
+    // 🔥 MUSCLE LOAD (FIXED)
+    // =========================================================
     fun calculateMuscleLoad(
         programExercises: List<ProgramExerciseItem>,
         exercises: List<Exercise>
@@ -66,29 +70,31 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
         programExercises.forEach { item ->
 
-            val exercise = exerciseMap[item.exerciseId] ?: return@forEach
+            val exercise = exerciseMap[item.exerciseId]
+                ?: return@forEach
 
-            val volume = item.sets * item.reps * item.weight
+            val volume =
+                item.sets * item.reps * item.weight
 
             exercise.muscleGroups.forEach { mg ->
 
                 val key = normalizeMuscle(mg.muscle)
-                val contribution = volume * (mg.percentage / 100f)
 
-                result[key] = (result[key] ?: 0) + contribution.toInt()
+                val contribution =
+                    volume * (mg.percentage / 100f)
+
+                result[key] =
+                    (result[key] ?: 0) + contribution.toInt()
             }
-        }
-
-        println("=== FINAL MUSCLE MAP ===")
-        result.forEach { (k, v) ->
-            println("$k -> $v")
         }
 
         return result
     }
 
     // ================= WEEKLY VOLUME =================
-    fun calculateWeeklyVolume(history: List<WorkoutHistory>): List<Float> {
+    fun calculateWeeklyVolume(
+        history: List<WorkoutHistory>
+    ): List<Float> {
 
         val result = MutableList(7) { 0f }
 
@@ -97,15 +103,19 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             val cal = Calendar.getInstance()
             cal.timeInMillis = it.date
 
-            val day = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7
+            val day =
+                (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7
+
             result[day] += it.totalVolume
         }
 
         return result
     }
 
-    // ================= RECOVERY SCORE =================
-    fun calculateRecoveryScore(history: List<WorkoutHistory>): Float {
+    // ================= RECOVERY =================
+    fun calculateRecoveryScore(
+        history: List<WorkoutHistory>
+    ): Float {
 
         if (history.isEmpty()) return 100f
 
@@ -115,16 +125,23 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             now - it.date <= 7L * 24 * 60 * 60 * 1000
         }
 
-        val totalVolume = lastWeek.sumOf { it.totalVolume.toDouble() }.toFloat()
-        val sessions = lastWeek.size.coerceAtLeast(1)
+        val totalVolume =
+            lastWeek.sumOf { it.totalVolume.toDouble() }.toFloat()
+
+        val sessions =
+            lastWeek.size.coerceAtLeast(1)
 
         val avgVolume = totalVolume / sessions
 
-        val intensity = (avgVolume / 20000f).coerceIn(0f, 1f)
-        val frequency = (sessions / 5f).coerceIn(0f, 1f)
+        val intensity =
+            (avgVolume / 20000f).coerceIn(0f, 1f)
 
-        return (100f - ((intensity * 60f) + (frequency * 40f)))
-            .coerceIn(0f, 100f)
+        val frequency =
+            (sessions / 5f).coerceIn(0f, 1f)
+
+        return (
+                100f - ((intensity * 60f) + (frequency * 40f))
+                ).coerceIn(0f, 100f)
     }
 
     // ================= COLOR =================

@@ -73,4 +73,10 @@ interface ProgramDao {
         ORDER BY pxc.position ASC
     """)
     suspend fun getProgramExercises(programId: Int): List<ProgramExerciseItem>
+    @Query("""
+    SELECT * FROM programs
+    WHERE id = :programId
+    LIMIT 1
+""")
+    suspend fun getProgramById(programId: Int): Program?
 }

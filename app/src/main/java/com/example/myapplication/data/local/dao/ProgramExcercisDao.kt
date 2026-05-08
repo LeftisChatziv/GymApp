@@ -2,17 +2,15 @@ package com.example.myapplication.data.local.dao
 
 import androidx.room.*
 import com.example.myapplication.data.local.entity.ProgramExerciseCrossRef
-import com.example.myapplication.data.local.relation.ProgramExerciseItem
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProgramExerciseDao {
 
-    // ================= INSERT =================
+    // ➕ INSERT
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCrossRef(crossRef: ProgramExerciseCrossRef)
 
-    // ================= UPDATE =================
+    // ✏️ UPDATE (CORRECT & SAFE)
     @Query("""
         UPDATE program_exercise_cross_ref
         SET sets = :sets,
@@ -30,15 +28,16 @@ interface ProgramExerciseDao {
         weight: Int,
         position: Int
     ): Int
+    // 👆 επιστρέφει rows updated (χρήσιμο για debug)
 
-    // ================= DELETE ALL =================
+    // ❌ DELETE ALL
     @Query("""
         DELETE FROM program_exercise_cross_ref 
         WHERE programId = :programId
     """)
     suspend fun deleteByProgram(programId: Int)
 
-    // ================= DELETE SINGLE =================
+    // ❌ DELETE SINGLE
     @Query("""
         DELETE FROM program_exercise_cross_ref 
         WHERE programId = :programId 
@@ -46,9 +45,7 @@ interface ProgramExerciseDao {
     """)
     suspend fun deleteSingle(programId: Int, exerciseId: Int)
 
-    // =========================================================
-    // 🔥 CRITICAL FIX: REACTIVE FLOW (THIS FIXES YOUR HEATMAP)
-    // =========================================================
+    // 📌 READ ORDERED
     @Query("""
         SELECT 
             programId,
@@ -61,20 +58,5 @@ interface ProgramExerciseDao {
         WHERE programId = :programId
         ORDER BY position ASC
     """)
-    fun getByProgramFlow(programId: Int): Flow<List<ProgramExerciseCrossRef>>
-
-    // (optional fallback if needed)
-    @Query("""
-        SELECT 
-            programId,
-            exerciseId,
-            sets,
-            reps,
-            weight,
-            position
-        FROM program_exercise_cross_ref
-        WHERE programId = :programId
-        ORDER BY position ASC
-    """)
-    suspend fun getByProgramOnce(programId: Int): List<ProgramExerciseCrossRef>
+    suspend fun getByProgram(programId: Int): List<ProgramExerciseCrossRef>
 }

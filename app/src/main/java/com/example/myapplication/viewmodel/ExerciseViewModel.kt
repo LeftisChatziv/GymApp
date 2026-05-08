@@ -7,11 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.database.AppDatabase
 import com.example.myapplication.data.local.entity.Exercise
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
 class ExerciseViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = AppDatabase.getDatabase(application).exerciseDao()
+    private val dao =
+        AppDatabase.getDatabase(application).exerciseDao()
 
     // ================= EXERCISES FLOW =================
     val exercises: StateFlow<List<Exercise>> =
@@ -25,7 +25,7 @@ class ExerciseViewModel(application: Application) : AndroidViewModel(application
             }
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList()
             )
 }

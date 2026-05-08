@@ -15,9 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.viewmodel.*
 
-// ================= RANK PROGRESS =================
-
-
 @Composable
 fun ProgressScreen() {
 
@@ -29,20 +26,35 @@ fun ProgressScreen() {
     val exercises by exerciseViewModel.exercises.collectAsState()
     val programs by programViewModel.programs.collectAsState()
     val selectedProgramId by programViewModel.selectedProgramId.collectAsState()
-
     val history by progressViewModel.history.collectAsState()
     val userStats by userStatsViewModel.stats.collectAsState()
 
+    // ================= AUTO SELECT PROGRAM =================
+    LaunchedEffect(programs, selectedProgramId) {
+        if (selectedProgramId == null && programs.isNotEmpty()) {
+            programViewModel.selectProgram(programs.first().program.id)
+        }
+    }
+
+    // ================= SELECTED PROGRAM =================
     val selectedProgram = remember(programs, selectedProgramId) {
         programs.firstOrNull { it.program.id == selectedProgramId }
     }
 
-    val programExercises = remember(selectedProgram) {
-        selectedProgram?.exercises ?: emptyList()
-    }
+    val programExercises = selectedProgram?.exercises.orEmpty()
 
+    // =========================================================
+    // 🔥 FIX: stable muscle load (NO recompute on every recomposition)
+    // =========================================================
     val muscleLoads = remember(programExercises, exercises) {
-        progressViewModel.calculateMuscleLoad(programExercises, exercises)
+        if (programExercises.isNotEmpty() && exercises.isNotEmpty()) {
+            progressViewModel.calculateMuscleLoad(
+                programExercises,
+                exercises
+            )
+        } else {
+            emptyMap()
+        }
     }
 
     val weeklyVolume = remember(history) {
@@ -53,18 +65,14 @@ fun ProgressScreen() {
         progressViewModel.calculateRecoveryScore(history)
     }
 
-    // ================= XP SOURCE FIX =================
-    val totalXp = remember(userStats) {
-        userStats?.score ?: 0.0
-    }
-
-    val rankProgress = remember(totalXp) {
-        calculateRankProgress(totalXp)
-    }
+    val totalXp = userStats?.score ?: 0.0
+    val rankProgress = calculateRankProgress(totalXp)
 
     val scrollState = rememberScrollState()
+
     val isLandscape =
-        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        LocalConfiguration.current.orientation ==
+                Configuration.ORIENTATION_LANDSCAPE
 
     Scaffold { padding ->
 
@@ -77,25 +85,50 @@ fun ProgressScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Text("Progress", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Progress",
+                style = MaterialTheme.typography.headlineMedium
+            )
 
             Spacer(Modifier.height(16.dp))
 
+            // ================= DEBUG =================
+            Text("Selected Program ID: $selectedProgramId")
+            Text("Programs: ${programs.size}")
+            Text("Program exercises: ${programExercises.size}")
+            Text("Exercises DB: ${exercises.size}")
+            Text("MuscleLoads size: ${muscleLoads.size}")
+
+            Spacer(Modifier.height(16.dp))
+
+            // ================= HEATMAP =================
             if (isLandscape) {
 
                 Row(
-                    Modifier.fillMaxWidth().height(260.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
-                    Card(Modifier.weight(1f)) {
-                        Box(Modifier.fillMaxSize().padding(8.dp), Alignment.Center) {
+                    Card(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             BodyHeatmap(muscleLoads)
                         }
                     }
 
-                    Card(Modifier.weight(1f)) {
-                        Box(Modifier.fillMaxSize().padding(8.dp), Alignment.Center) {
+                    Card(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             WeeklyVolumeChart(data = weeklyVolume)
                         }
                     }
@@ -106,17 +139,31 @@ fun ProgressScreen() {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
                     Card(
-                        Modifier
+                        modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(350.dp, 520.dp)
                     ) {
-                        Box(Modifier.fillMaxSize().padding(8.dp), Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             BodyHeatmap(muscleLoads)
                         }
                     }
 
-                    Card(Modifier.fillMaxWidth().height(220.dp)) {
-                        Box(Modifier.fillMaxSize().padding(8.dp), Alignment.Center) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             WeeklyVolumeChart(data = weeklyVolume)
                         }
                     }
@@ -125,8 +172,8 @@ fun ProgressScreen() {
 
             Spacer(Modifier.height(24.dp))
 
-            // ================= WEEKLY =================
-            Card(Modifier.fillMaxWidth()) {
+            // ================= STATS =================
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Weekly Progress")
                     Text("Exercises: ${history.size}")
@@ -136,27 +183,25 @@ fun ProgressScreen() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ================= RANK PROGRESS =================
-            Card(Modifier.fillMaxWidth()) {
-
+            // ================= RANK =================
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
 
                     Text("Rank Progress")
-
                     Spacer(Modifier.height(8.dp))
 
                     Text("Current: ${rankProgress.currentRank}")
 
-                    if (rankProgress.nextRank != null) {
-                        Text("Next: ${rankProgress.nextRank}")
-                    } else {
-                        Text("Max Rank Reached 🔥")
-                    }
+                    Text(
+                        if (rankProgress.nextRank != null)
+                            "Next: ${rankProgress.nextRank}"
+                        else "Max Rank Reached 🔥"
+                    )
 
                     Spacer(Modifier.height(12.dp))
 
                     LinearProgressIndicator(
-                        progress = rankProgress.progress,
+                        progress = { rankProgress.progress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(10.dp)
@@ -164,14 +209,14 @@ fun ProgressScreen() {
 
                     Spacer(Modifier.height(8.dp))
 
-                    Text("${(rankProgress.progress * 100).toInt()}% to next rank")
+                    Text("${(rankProgress.progress * 100).toInt()}%")
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
             // ================= RECOVERY =================
-            Card(Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
 
                 Column(Modifier.padding(16.dp)) {
 

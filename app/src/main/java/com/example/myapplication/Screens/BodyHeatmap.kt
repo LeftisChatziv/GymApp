@@ -3,7 +3,8 @@ package com.example.myapplication.Screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,11 +16,11 @@ fun BodyHeatmap(
     muscleLoads: Map<String, Int>
 ) {
 
-    val stableLoads = remember(muscleLoads) {
+    val loads = remember(muscleLoads) {
         muscleLoads.toMap()
     }
 
-    fun getMuscleColor(load: Int): Color {
+    fun color(load: Int): Color {
         return when {
             load <= 0 -> Color(0xFFE0E0E0)
             load < 5000 -> Color(0xFFFF6B6B)
@@ -29,28 +30,36 @@ fun BodyHeatmap(
         }
     }
 
-    val rows = remember {
-        listOf(
-            listOf("ώμοι"),
-            listOf("στήθος"),
-            listOf("δικέφαλα", "τρικέφαλα"),
-            listOf("πήχεις"),
-            listOf("κορμός"),
-            listOf("πλάτη"),
-            listOf("τραπεζοειδής"),
-            listOf("πόδια", "γλουτοί")
+    val rows = listOf(
+        listOf("ώμοι"),
+        listOf("στήθος"),
+        listOf("δικέφαλα", "τρικέφαλα"),
+        listOf("πήχεις"),
+        listOf("κορμός"),
+        listOf("πλάτη"),
+        listOf("τραπεζοειδής"),
+        listOf("πόδια", "γλουτοί")
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        // ================= DEBUG =================
+
+        Text(
+            text = "Muscle keys: ${loads.keys.joinToString()}",
+            style = MaterialTheme.typography.labelSmall
         )
-    }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
-        Box(
-            Modifier
-                .size(60.dp)
-                .background(Color.LightGray, RoundedCornerShape(50))
+        Text(
+            text = "SIZE: ${muscleLoads.size}",
+            style = MaterialTheme.typography.labelSmall
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // ================= HEATMAP =================
 
         rows.forEach { row ->
 
@@ -61,26 +70,29 @@ fun BodyHeatmap(
 
                 row.forEachIndexed { index, muscle ->
 
-                    val load = stableLoads[muscle] ?: 0
+                    val load = loads[muscle] ?: 0
 
                     Box(
                         modifier = Modifier
-                            .width(if (row.size == 1) 160.dp else 90.dp)
+                            .width(
+                                if (row.size == 1) 160.dp
+                                else 90.dp
+                            )
                             .height(50.dp)
                             .background(
-                                color = getMuscleColor(load),
+                                color = color(load),
                                 shape = RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
+
                         Text(
-                            text = "$muscle\n$load",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "$muscle\n$load"
                         )
                     }
 
                     if (index != row.lastIndex) {
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                     }
                 }
             }
