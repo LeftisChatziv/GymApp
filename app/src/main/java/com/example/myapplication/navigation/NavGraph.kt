@@ -12,11 +12,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.*
 import kotlinx.coroutines.launch
 import com.example.myapplication.viewmodel.ProgramViewModel
@@ -36,22 +38,31 @@ fun NavGraph(
     val navController = rememberNavController()
 
     var notificationsEnabled by remember { mutableStateOf(true) }
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     val programViewModel: ProgramViewModel = viewModel()
     val exerciseViewModel: ExerciseViewModel = viewModel()
 
-    // ✅ FIX: global scope values
     val exercisesPool by exerciseViewModel.exercises.collectAsState(initial = emptyList())
+
     var userWeight by remember { mutableIntStateOf(70) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
+
     val currentRoute = navBackStackEntry?.destination?.route
 
     val bottomBarRoutes = listOf(
-        "home", "exercises", "program", "progress", "profile"
+        "home",
+        "exercises",
+        "program",
+        "progress",
+        "profile"
     )
+
+    // 🔥 HIDE TOP BAR ON SCROLL
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -60,17 +71,26 @@ fun NavGraph(
             ModalDrawerSheet {
 
                 Spacer(Modifier.height(16.dp))
-                Text("⚙ Settings", style = MaterialTheme.typography.titleLarge)
+
+                Text(
+                    "⚙ Settings",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
                 Divider()
 
                 NavigationDrawerItem(
                     label = { Text("🎧 Music") },
                     selected = currentRoute == "music",
                     onClick = {
+
                         navController.navigate("music") {
                             launchSingleTop = true
                         }
-                        scope.launch { drawerState.close() }
+
+                        scope.launch {
+                            drawerState.close()
+                        }
                     }
                 )
 
@@ -80,7 +100,9 @@ fun NavGraph(
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+
                     Text("🌗 Dark Mode")
+
                     Switch(
                         checked = isDarkTheme,
                         onCheckedChange = onToggleTheme
@@ -93,10 +115,14 @@ fun NavGraph(
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+
                     Text("🔔 Notifications")
+
                     Switch(
                         checked = notificationsEnabled,
-                        onCheckedChange = { notificationsEnabled = it }
+                        onCheckedChange = {
+                            notificationsEnabled = it
+                        }
                     )
                 }
             }
@@ -105,29 +131,52 @@ fun NavGraph(
 
         Scaffold(
 
+            modifier = Modifier.nestedScroll(
+                scrollBehavior.nestedScrollConnection
+            ),
+
             topBar = {
+
                 TopAppBar(
-                    title = { Text("My Gym App") },
+
+                    title = {
+                        Text("My Gym App")
+                    },
+
                     navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }
-                        }) {
+
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    drawerState.open()
+                                }
+                            }
+                        ) {
                             Text("☰")
                         }
-                    }
+                    },
+
+                    scrollBehavior = scrollBehavior
                 )
             },
 
             bottomBar = {
+
                 if (currentRoute in bottomBarRoutes) {
+
                     NavBar(
                         selectedItem = currentRoute ?: "home",
+
                         onItemSelected = { route ->
+
                             navController.navigate(route) {
+
                                 popUpTo(navController.graph.startDestinationId) {
                                     saveState = true
                                 }
+
                                 launchSingleTop = true
+
                                 restoreState = true
                             }
                         }
@@ -144,25 +193,37 @@ fun NavGraph(
             ) {
 
                 composable("login") {
+
                     LoginScreen(
-                        onGoToRegister = { navController.navigate("register") },
+                        onGoToRegister = {
+                            navController.navigate("register")
+                        },
+
                         onLoginSuccess = {
+
                             navController.navigate("home") {
-                                popUpTo("login") { inclusive = true }
+                                popUpTo("login") {
+                                    inclusive = true
+                                }
                             }
                         }
                     )
                 }
 
                 composable("register") {
+
                     RegisterScreen(
-                        onGoToLogin = { navController.popBackStack() }
+                        onGoToLogin = {
+                            navController.popBackStack()
+                        }
                     )
                 }
 
                 composable("home") {
+
                     HomeScreen(
                         onLogout = {
+
                             navController.navigate("login") {
                                 popUpTo(0)
                             }
@@ -171,9 +232,12 @@ fun NavGraph(
                 }
 
                 composable("program") {
+
                     ProgramScreen(
                         onOpenProgram = { program ->
+
                             programViewModel.selectProgram(program.program.id)
+
                             navController.navigate("program_details")
                         }
                     )
@@ -182,14 +246,23 @@ fun NavGraph(
                 composable("program_details") {
 
                     val programs by programViewModel.programs.collectAsState()
+
                     val selectedId by programViewModel.selectedProgramId.collectAsState()
 
-                    val program = programs.firstOrNull { it.program.id == selectedId }
+                    val program =
+                        programs.firstOrNull {
+                            it.program.id == selectedId
+                        }
 
                     if (program == null) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+                        Box(
+                            Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text("No program selected")
                         }
+
                         return@composable
                     }
 
@@ -197,22 +270,35 @@ fun NavGraph(
                         program = program,
                         exercisesPool = exercisesPool,
                         programViewModel = programViewModel,
-                        onStart = { navController.navigate("workout") },
-                        onBack = { navController.popBackStack() }
+                        onStart = {
+                            navController.navigate("workout")
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        }
                     )
                 }
 
                 composable("workout") {
 
                     val programs by programViewModel.programs.collectAsState()
+
                     val selectedId by programViewModel.selectedProgramId.collectAsState()
 
-                    val program = programs.firstOrNull { it.program.id == selectedId }
+                    val program =
+                        programs.firstOrNull {
+                            it.program.id == selectedId
+                        }
 
                     if (program == null) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+                        Box(
+                            Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text("No workout selected")
                         }
+
                         return@composable
                     }
 
@@ -220,7 +306,9 @@ fun NavGraph(
                         program = program,
                         exercisePool = exercisesPool,
                         userWeight = userWeight,
-                        onGoToProgress = { navController.navigate("progress") }
+                        onGoToProgress = {
+                            navController.navigate("progress")
+                        }
                     )
                 }
 
@@ -230,19 +318,36 @@ fun NavGraph(
                         navController.getBackStackEntry("home")
                     }
 
-                    val musicViewModel: MusicViewModel = viewModel(parentEntry)
+                    val musicViewModel: MusicViewModel =
+                        viewModel(parentEntry)
 
                     MusicScreen(
                         viewModel = musicViewModel,
-                        onBackClick = { navController.popBackStack() }
+                        onBackClick = {
+                            navController.popBackStack()
+                        }
                     )
                 }
 
-                composable("progress") { ProgressScreen() }
+                composable("progress") {
+                    ProgressScreen()
+                }
 
-                composable("profile") { ProfileScreen() }
+                composable("profile") {
 
-                composable("exercises") { ExercisesScreen() }
+                    ProfileScreen(
+                        onLogout = {
+
+                            navController.navigate("login") {
+                                popUpTo(0)
+                            }
+                        }
+                    )
+                }
+
+                composable("exercises") {
+                    ExercisesScreen()
+                }
             }
         }
     }

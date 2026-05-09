@@ -2,96 +2,81 @@ package com.example.myapplication.Screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.R
+import com.example.myapplication.viewmodel.UserViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.example.myapplication.viewmodel.UserStatsViewModel
-import com.example.myapplication.Screens.RankSystem
-import com.example.myapplication.data.local.dataStore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import com.example.myapplication.data.local.dataStore
-import java.util.Locale
 
 @Composable
-fun ProfileScreen() {
-
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+fun ProfileScreen(
+    onLogout: () -> Unit
+) {
 
     val auth = FirebaseAuth.getInstance()
-    val user = auth.currentUser ?: return
-    val uid = user.uid
+    val user = auth.currentUser
 
-    val viewModel: UserStatsViewModel = viewModel()
-    val stats by viewModel.stats.collectAsState()
+    if (user == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Please login first")
+        }
+        return
+    }
 
-    var email by rememberSaveable { mutableStateOf(user.email ?: "") }
+    val userViewModel: UserViewModel = viewModel()
 
-    // ✅ body weight state
-    var userWeight by rememberSaveable { mutableIntStateOf(70) }
+    // ✅ FIX: collect StateFlow σωστά
+    val weight by userViewModel.weight.collectAsState(initial = 0)
+    val score by userViewModel.score.collectAsState()
+    val rank by userViewModel.rank.collectAsState()
+    val streak by userViewModel.streak.collectAsState()
+    val workouts by userViewModel.totalWorkouts.collectAsState()
 
-    // DataStore key
-    val weightKey = intPreferencesKey("user_weight")
+    var userWeight by rememberSaveable(weight) {
+        mutableIntStateOf(weight)
+    }
 
-    // LOAD saved weight
+    val email = user.email ?: ""
+
+    // ⚠️ optional: load user once
     LaunchedEffect(Unit) {
-        val prefs = context.dataStore.data.first()
-        userWeight = prefs[weightKey] ?: 70
+        userViewModel.loadUser()
     }
 
-    // Firebase load
-    LaunchedEffect(uid) {
-        viewModel.initUser(uid)
-    }
-
-    val streak = stats?.streak ?: 0
-    val workouts = stats?.totalWorkouts ?: 0
-    val score = stats?.score ?: 0.0
-
-    val rank = RankSystem.getRank(score)
-    val colors = MaterialTheme.colorScheme
-
-    Scaffold(
-        containerColor = colors.background
-    ) { padding ->
+    Scaffold { padding ->
 
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // HEADER
             Text(
                 text = "Profile",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
 
-            // USER CARD
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = colors.primaryContainer
-                )
-            ) {
+            // ================= USER CARD =================
+            Card {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,9 +88,10 @@ fun ProfileScreen() {
                         modifier = Modifier
                             .size(70.dp)
                             .clip(CircleShape)
-                            .background(colors.primary),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
+
                         Text(
                             text = email.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
                             color = Color.White,
@@ -117,17 +103,20 @@ fun ProfileScreen() {
 
                     Column {
                         Text(email, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
                         Text("Rank: $rank")
                     }
                 }
             }
 
-            // WEIGHT INPUT
+            // ================= WEIGHT =================
             OutlinedTextField(
                 value = userWeight.toString(),
                 onValueChange = {
-                    it.toIntOrNull()?.let { v ->
-                        if (v > 0) userWeight = v
+                    it.toIntOrNull()?.let { value ->
+                        if (value > 0) {
+                            userWeight = value
+                        }
                     }
                 },
                 label = { Text("Body Weight (kg)") },
@@ -135,59 +124,62 @@ fun ProfileScreen() {
                 singleLine = true
             )
 
-            // SAVE BUTTON
             Button(
                 onClick = {
-                    scope.launch {
-                        context.dataStore.edit { prefs ->
-                            prefs[weightKey] = userWeight
-                        }
-                    }
+                    userViewModel.updateWeight(userWeight)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Weight")
             }
 
-            // STATS
+            // ================= STATS =================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                StatBox("Workouts", workouts.toString(), Modifier.weight(1f))
-                StatBox("Streak", "$streak 🔥", Modifier.weight(1f))
-                StatBox(
-                    "Score",
-                    String.format(Locale.getDefault(), "%.1f", score),
-                    Modifier.weight(1f)
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    title = workouts.toString(),
+                    subtitle = "Workouts",
+                    icon = painterResource(id = R.drawable.exercise)
+                )
+
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    title = "$streak 🔥",
+                    subtitle = "Streak",
+                    icon = painterResource(id = R.drawable.fire)
+                )
+
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    title = String.format("%.1f", score),
+                    subtitle = "Score",
+                    icon = painterResource(id = R.drawable.trendingup)
                 )
             }
-        }
-    }
-}
 
-@Composable
-fun StatBox(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Spacer(Modifier.height(20.dp))
 
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // ================= DELETE PROFILE =================
+            Button(
+                onClick = {
+                    auth.currentUser?.let {
+                        auth.signOut()
+                        onLogout()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(55.dp)
+            ) {
+                Text("Delete Profile")
+            }
         }
     }
 }

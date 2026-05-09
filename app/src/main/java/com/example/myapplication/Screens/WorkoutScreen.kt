@@ -13,19 +13,19 @@ import com.example.myapplication.data.local.relation.ProgramExerciseItem
 import com.example.myapplication.viewmodel.WorkoutViewModel
 import com.example.myapplication.viewmodel.UserStatsViewModel
 
-// ================= METRICS MODEL =================
+// ================= METRICS =================
 data class WorkoutMetrics(
     val totalVolume: Float,
     val muscleLoad: Map<String, Int>,
     val xp: Int
 )
 
-// ================= CALC =================
+// ================= BODYWEIGHT =================
 private fun calcBodyWeight(userWeight: Int, percent: Int): Int {
     return (userWeight * percent) / 100
 }
 
-// ================= BUILD METRICS =================
+// ================= METRICS =================
 fun buildWorkoutMetrics(
     exercises: List<ProgramExerciseItem>,
     exercisePool: List<Exercise>,
@@ -40,7 +40,7 @@ fun buildWorkoutMetrics(
 
         val poolEx = exercisePool.find { it.id == ex.exerciseId }
 
-        val isBody = poolEx?.category?.contains("Σώμα", ignoreCase = true) == true
+        val isBody = poolEx?.category?.contains("Σώμα", true) == true
 
         val load = if (isBody && poolEx != null) {
             poolEx.muscleGroups.maxOfOrNull {
@@ -61,11 +61,7 @@ fun buildWorkoutMetrics(
         xp += ((ex.sets * ex.reps * load) / 10f).toInt()
     }
 
-    return WorkoutMetrics(
-        totalVolume = totalVolume,
-        muscleLoad = muscleMap,
-        xp = xp
-    )
+    return WorkoutMetrics(totalVolume, muscleMap, xp)
 }
 
 // ================= SCREEN =================
@@ -82,25 +78,53 @@ fun WorkoutScreen(
 
     val exercises = program.exercises
 
-    var index by remember { mutableStateOf(0) }
-    var currentTime by remember { mutableStateOf(0) }
-    var totalTime by remember { mutableStateOf(0) }
+    var index by remember { mutableIntStateOf(0) }
+    var currentTime by remember { mutableIntStateOf(0) }
+    var totalTime by remember { mutableIntStateOf(0) }
 
-    val uid = remember { "demo" }
+    var hasSaved by remember { mutableStateOf(false) }
 
     val isFinished = index >= exercises.size
 
-    // ================= TIMER FIX =================
+    // ================= TIMER =================
     LaunchedEffect(index) {
-
-        currentTime = 0
 
         if (isFinished) return@LaunchedEffect
 
-        while (index < exercises.size) {
+        currentTime = 0
+
+        while (!isFinished) {
             delay(1000)
             currentTime++
+            totalTime++
         }
+    }
+
+    // ================= SAVE ONCE =================
+    LaunchedEffect(isFinished) {
+
+        if (!isFinished || hasSaved) return@LaunchedEffect
+
+        hasSaved = true
+
+        val metrics = buildWorkoutMetrics(
+            exercises = exercises,
+            exercisePool = exercisePool,
+            userWeight = userWeight
+        )
+
+        // ✅ FIREBASE UPDATE (correct function)
+        userStatsViewModel.completeWorkout(metrics.xp.toDouble())
+
+        // ✅ ROOM HISTORY SAVE
+        workoutViewModel.saveWorkoutHistory(
+            programId = program.program.id,
+            programName = program.program.name,
+            durationSeconds = totalTime,
+            totalExercises = exercises.size,
+            completedExercises = exercises.size,
+            exercises = exercises
+        )
     }
 
     // ================= END SCREEN =================
@@ -111,21 +135,6 @@ fun WorkoutScreen(
             exercisePool = exercisePool,
             userWeight = userWeight
         )
-
-        // 🔥 IMPORTANT FIX: SAVE HISTORY + STATS ONLY ONCE
-        LaunchedEffect(Unit) {
-
-            userStatsViewModel.completeWorkout(uid, exercises)
-
-            workoutViewModel.saveWorkoutHistory(
-                programId = program.program.id,
-                programName = program.program.name,
-                durationSeconds = totalTime,
-                totalExercises = exercises.size,
-                completedExercises = exercises.size,
-                exercises = exercises
-            )
-        }
 
         Column(
             Modifier.fillMaxSize().padding(16.dp),
@@ -163,6 +172,7 @@ fun WorkoutScreen(
         return
     }
 
+    // ================= CURRENT =================
     val current = exercises[index]
 
     Column(
@@ -186,8 +196,6 @@ fun WorkoutScreen(
 
         Button(
             onClick = {
-
-                totalTime += currentTime
                 index++
                 currentTime = 0
             },

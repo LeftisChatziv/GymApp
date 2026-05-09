@@ -19,6 +19,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         AppDatabase.getDatabase(application).workoutHistoryDao()
 
     // ================= HISTORY =================
+
     val history: StateFlow<List<WorkoutHistory>> =
         historyDao.getAllFlow()
             .stateIn(
@@ -28,79 +29,187 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             )
 
     // ================= MUSCLE NORMALIZER =================
+
     private fun normalizeMuscle(name: String): String {
+
         return when (name.trim().lowercase()) {
 
-            "chest", "στήθος" -> "στήθος"
-            "back", "πλάτη" -> "πλάτη"
-            "legs", "πόδια" -> "πόδια"
+            "chest", "στήθος" ->
+                "στήθος"
 
-            "shoulders", "shoulder", "ώμοι", "ωμοι" -> "ώμοι"
+            "back", "πλάτη" ->
+                "πλάτη"
 
-            "biceps", "δικέφαλα" -> "δικέφαλα"
+            "legs", "πόδια" ->
+                "πόδια"
 
-            "triceps", "tricep", "τρικέφαλα" -> "τρικέφαλα"
+            "shoulders",
+            "shoulder",
+            "ώμοι",
+            "ωμοι" ->
+                "ώμοι"
 
-            "core", "κορμός" -> "κορμός"
+            "biceps",
+            "δικέφαλα" ->
+                "δικέφαλα"
 
-            "traps", "τραπεζοειδής" -> "τραπεζοειδής"
+            "triceps",
+            "tricep",
+            "τρικέφαλα" ->
+                "τρικέφαλα"
 
-            "glutes", "γλουτοί" -> "γλουτοί"
+            "core",
+            "κορμός" ->
+                "κορμός"
 
-            "forearms", "πήχεις" -> "πήχεις"
+            "traps",
+            "τραπεζοειδής" ->
+                "τραπεζοειδής"
 
-            else -> name.trim().lowercase()
+            "glutes",
+            "γλουτοί" ->
+                "γλουτοί"
+
+            "forearms",
+            "πήχεις" ->
+                "πήχεις"
+
+            else ->
+                name.trim().lowercase()
         }
     }
 
     // =========================================================
-    // 🔥 MUSCLE LOAD (FIXED)
+    // 🔥 EFFECTIVE WEIGHT
     // =========================================================
+
+    private fun calculateEffectiveWeight(
+        exercise: Exercise,
+        loggedWeight: Int,
+        userWeight: Int
+    ): Int {
+
+        // ================= BODYWEIGHT EXERCISES =================
+
+        if (loggedWeight <= 0) {
+
+            val name = exercise.name.lowercase()
+
+            return when {
+
+                // Push Ups
+                name.contains("push") ->
+                    (userWeight * 0.64f).toInt()
+
+                // Dips
+                name.contains("dip") ->
+                    (userWeight * 0.90f).toInt()
+
+                // Pull Ups / Chin Ups
+                name.contains("pull") ||
+                        name.contains("chin") ->
+                    userWeight
+
+                // Squats
+                name.contains("squat") ->
+                    (userWeight * 0.70f).toInt()
+
+                // Default BW
+                else ->
+                    userWeight
+            }
+        }
+
+        // ================= NORMAL EXERCISES =================
+
+        return loggedWeight
+    }
+
+    // =========================================================
+    // 🔥 MUSCLE LOAD (FIXED + BODYWEIGHT SUPPORT)
+    // =========================================================
+
     fun calculateMuscleLoad(
         programExercises: List<ProgramExerciseItem>,
-        exercises: List<Exercise>
+        exercises: List<Exercise>,
+        userWeight: Int
     ): Map<String, Int> {
 
-        if (programExercises.isEmpty() || exercises.isEmpty()) {
+        if (
+            programExercises.isEmpty() ||
+            exercises.isEmpty()
+        ) {
             return emptyMap()
         }
 
-        val exerciseMap = exercises.associateBy { it.id }
-        val result = mutableMapOf<String, Int>()
+        // Faster lookup
+        val exerciseMap =
+            exercises.associateBy { it.id }
+
+        val result =
+            mutableMapOf<String, Int>()
+
+        // =====================================================
+        // LOOP THROUGH ALL PROGRAM EXERCISES
+        // =====================================================
 
         programExercises.forEach { item ->
 
-            val exercise = exerciseMap[item.exerciseId]
-                ?: return@forEach
+            val exercise =
+                exerciseMap[item.exerciseId]
+                    ?: return@forEach
+
+            // ================= EFFECTIVE WEIGHT =================
+
+            val effectiveWeight =
+                calculateEffectiveWeight(
+                    exercise = exercise,
+                    loggedWeight = item.weight,
+                    userWeight = userWeight
+                )
+
+            // ================= TOTAL VOLUME =================
 
             val volume =
-                item.sets * item.reps * item.weight
+                item.sets *
+                        item.reps *
+                        effectiveWeight
+
+            // ================= MUSCLE DISTRIBUTION =================
 
             exercise.muscleGroups.forEach { mg ->
 
-                val key = normalizeMuscle(mg.muscle)
+                val key =
+                    normalizeMuscle(mg.muscle)
 
                 val contribution =
                     volume * (mg.percentage / 100f)
 
                 result[key] =
-                    (result[key] ?: 0) + contribution.toInt()
+                    (result[key] ?: 0) +
+                            contribution.toInt()
             }
         }
 
         return result
     }
 
-    // ================= WEEKLY VOLUME =================
+    // =========================================================
+    // 🔥 WEEKLY VOLUME
+    // =========================================================
+
     fun calculateWeeklyVolume(
         history: List<WorkoutHistory>
     ): List<Float> {
 
-        val result = MutableList(7) { 0f }
+        val result =
+            MutableList(7) { 0f }
 
         history.forEach {
 
-            val cal = Calendar.getInstance()
+            val cal =
+                Calendar.getInstance()
+
             cal.timeInMillis = it.date
 
             val day =
@@ -112,9 +221,13 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         return result
     }
 
-    // ================= RECOVERY =================
+    // =========================================================
+    // 🔥 RECOVERY SCORE
+    // =========================================================
+
     fun calculateRecoveryScore(
-        history: List<WorkoutHistory>
+        history: List<WorkoutHistory>,
+        score: Double
     ): Float {
 
         if (history.isEmpty()) return 100f
@@ -125,33 +238,56 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             now - it.date <= 7L * 24 * 60 * 60 * 1000
         }
 
-        val totalVolume =
-            lastWeek.sumOf { it.totalVolume.toDouble() }.toFloat()
+        val totalVolume = lastWeek.sumOf {
+            it.totalVolume.toDouble()
+        }.toFloat()
 
-        val sessions =
-            lastWeek.size.coerceAtLeast(1)
+        val sessions = lastWeek.size.coerceAtLeast(1)
 
         val avgVolume = totalVolume / sessions
 
-        val intensity =
-            (avgVolume / 20000f).coerceIn(0f, 1f)
+        val intensity = (avgVolume / 20000f).coerceIn(0f, 1f)
+        val frequency = (sessions / 5f).coerceIn(0f, 1f)
 
-        val frequency =
-            (sessions / 5f).coerceIn(0f, 1f)
+        // ================= RANK PROTECTION =================
+        val rankLevel = when {
+            score >= 25000 -> 0.35f   // Legend (πολύ ανθεκτικός)
+            score >= 15000 -> 0.45f   // Elite
+            score >= 9000 -> 0.55f    // Advanced
+            score >= 5000 -> 0.65f    // Athlete
+            score >= 2500 -> 0.75f    // Apprentice
+            score >= 1000 -> 0.85f    // Novice
+            else -> 1.0f              // Beginner (κανονική κόπωση)
+        }
 
-        return (
-                100f - ((intensity * 60f) + (frequency * 40f))
-                ).coerceIn(0f, 100f)
+        val fatigue =
+            ((intensity * 60f) + (frequency * 40f)) * rankLevel
+
+        return (100f - fatigue).coerceIn(0f, 100f)
     }
 
-    // ================= COLOR =================
+    // =========================================================
+    // 🔥 MUSCLE COLOR
+    // =========================================================
+
     fun getMuscleColor(load: Int): Color {
+
         return when {
-            load <= 0 -> Color(0xFFE0E0E0)
-            load < 5000 -> Color(0xFFFF6B6B)
-            load < 15000 -> Color(0xFFFFD93D)
-            load < 30000 -> Color(0xFF6BCB77)
-            else -> Color(0xFF4D96FF)
+
+            load <= 0 ->
+                Color(0xFFE0E0E0)
+
+            load < 5000 ->
+                Color(0xFFFF6B6B)
+
+            load < 15000 ->
+                Color(0xFFFFD93D)
+
+            load < 30000 ->
+                Color(0xFF6BCB77)
+
+            else ->
+                Color(0xFF4D96FF)
         }
     }
 }

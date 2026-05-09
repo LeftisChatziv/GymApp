@@ -16,7 +16,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.myapplication.notification.WorkoutReminderReceiver
+import com.example.myapplication.viewmodel.UserStatsViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
@@ -25,7 +28,10 @@ fun LoginScreen(
 ) {
 
     val auth = FirebaseAuth.getInstance()
-    val context = LocalContext.current   // 🔥 IMPORTANT
+    val db = FirebaseFirestore.getInstance()
+    val context = LocalContext.current
+
+    val userStatsViewModel: UserStatsViewModel = viewModel()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -48,21 +54,11 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
 
-            Text(
-                text = "Welcome Back 💪",
-                color = colors.onBackground,
-                fontSize = 28.sp
-            )
+            Text("Welcome Back 💪", fontSize = 28.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("Login to continue", fontSize = 15.sp)
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Login to continue",
-                color = colors.onSurfaceVariant,
-                fontSize = 15.sp
-            )
-
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(Modifier.height(30.dp))
 
             OutlinedTextField(
                 value = email,
@@ -71,14 +67,10 @@ fun LoginScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = colors.onSurfaceVariant
-                )
+                shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = password,
@@ -88,74 +80,95 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = colors.onSurfaceVariant
-                )
+                shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 14.sp
+                    color = MaterialTheme.colorScheme.error
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             Button(
                 enabled = !loading,
                 onClick = {
+
+                    val cleanEmail = email.trim()
+
+                    if (cleanEmail.isBlank() || password.isBlank()) {
+                        errorMessage = "Fill all fields"
+                        return@Button
+                    }
+
                     loading = true
                     errorMessage = ""
 
-                    auth.signInWithEmailAndPassword(email, password)
-                        .addOnSuccessListener {
+                    auth.signInWithEmailAndPassword(cleanEmail, password)
+                        .addOnSuccessListener { result ->
 
-                            loading = false
+                            val uid = result.user?.uid
 
-                            // 🔥 LOGIN NOTIFICATION
-                            WorkoutReminderReceiver.sendLoginNotification(context)
+                            if (uid == null) {
+                                loading = false
+                                errorMessage = "Login failed"
+                                return@addOnSuccessListener
+                            }
 
-                            onLoginSuccess()
+                            // ================= FIREBASE CHECK =================
+                            db.collection("Users")
+                                .document(uid)
+                                .get()
+                                .addOnSuccessListener { doc ->
+
+                                    if (!doc.exists()) {
+                                        loading = false
+                                        errorMessage = "User profile not found"
+                                        return@addOnSuccessListener
+                                    }
+
+                                    // ================= SAFE INIT =================
+                                    userStatsViewModel.startListening()
+
+                                    loading = false
+
+                                    WorkoutReminderReceiver.sendLoginNotification(context)
+
+                                    onLoginSuccess()
+                                }
+                                .addOnFailureListener {
+                                    loading = false
+                                    errorMessage = "Firestore error"
+                                }
                         }
-                        .addOnFailureListener { e ->
+                        .addOnFailureListener {
                             loading = false
-                            errorMessage = e.message ?: "Login failed"
+                            errorMessage = "Login failed"
                         }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(55.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primary,
-                    contentColor = colors.onPrimary
-                )
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Text(if (loading) "Loading..." else "Login", fontSize = 18.sp)
+                Text(if (loading) "Loading..." else "Login")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
 
-                Text(
-                    "Don't have an account? ",
-                    color = colors.onSurfaceVariant,
-                    fontSize = 15.sp
-                )
+                Text("Don't have an account? ")
 
                 Text(
                     "Register",
-                    color = colors.secondary,
-                    fontSize = 15.sp,
                     modifier = Modifier.clickable {
                         onGoToRegister()
-                    }
+                    },
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }

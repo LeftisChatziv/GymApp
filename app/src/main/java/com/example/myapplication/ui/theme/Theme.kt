@@ -3,6 +3,7 @@ package com.example.myapplication.ui.theme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+
 private val DarkColorScheme = darkColorScheme(
 
     primary = NeonGreen,
@@ -11,16 +12,19 @@ private val DarkColorScheme = darkColorScheme(
 
     background = DarkBackground,
     surface = DarkSurface,
+    surfaceVariant = DarkCard,
 
-    onPrimary = Color(0xFF0B0F14),
-    onSecondary = Color(0xFF0B0F14),
-    onTertiary = Color(0xFF0B0F14),
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
+    onTertiary = Color.Black,
 
     onBackground = TextWhite,
     onSurface = TextWhite,
+    onSurfaceVariant = TextMuted,
 
-    surfaceVariant = DarkCard,
-    onSurfaceVariant = TextMuted
+    primaryContainer = Color(0xFF14532D),
+    secondaryContainer = Color(0xFF1E3A8A),
+    tertiaryContainer = Color(0xFF4C1D95)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -31,6 +35,7 @@ private val LightColorScheme = lightColorScheme(
 
     background = LightBackground,
     surface = LightSurface,
+    surfaceVariant = LightCard,
 
     onPrimary = Color.White,
     onSecondary = Color.White,
@@ -38,9 +43,11 @@ private val LightColorScheme = lightColorScheme(
 
     onBackground = TextPrimary,
     onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
 
-    surfaceVariant = LightCard,
-    onSurfaceVariant = TextSecondary
+    primaryContainer = Color(0xFFDCFCE7),
+    secondaryContainer = Color(0xFFDBEAFE),
+    tertiaryContainer = Color(0xFFFEF3C7)
 )
 
 @Composable
@@ -48,7 +55,10 @@ fun MyApplicationTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
-    val colors = if (darkTheme) DarkColorScheme else LightColorScheme
+
+    val colors =
+        if (darkTheme) DarkColorScheme
+        else LightColorScheme
 
     MaterialTheme(
         colorScheme = colors,

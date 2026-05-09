@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.database.AppDatabase
 import com.example.myapplication.data.local.entity.WorkoutHistory
 import com.example.myapplication.data.local.relation.ProgramExerciseItem
-import com.example.myapplication.data.local.repository.UserStatsRepository
 import kotlinx.coroutines.launch
 import java.util.Calendar
+
 class WorkoutViewModel(
     application: Application
 ) : AndroidViewModel(application) {
@@ -19,14 +19,7 @@ class WorkoutViewModel(
     private val historyDao =
         db.workoutHistoryDao()
 
-    private val statsRepository =
-        UserStatsRepository(
-            dao = db.userStatsDao(),
-            exerciseDao = db.exerciseDao(),
-            context = application
-        )
-
-    // ================= SAVE HISTORY =================
+    // ================= SAVE WORKOUT HISTORY =================
     fun saveWorkoutHistory(
         programId: Int,
         programName: String,
@@ -59,17 +52,6 @@ class WorkoutViewModel(
             )
 
             historyDao.insert(history)
-        }
-    }
-
-    // ================= COMPLETE SESSION =================
-    fun completeWorkoutSession(
-        uid: String,
-        exercises: List<ProgramExerciseItem>
-    ) {
-
-        viewModelScope.launch {
-            statsRepository.completeWorkout(uid, exercises)
         }
     }
 }

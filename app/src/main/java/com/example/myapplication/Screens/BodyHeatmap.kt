@@ -3,99 +3,109 @@ package com.example.myapplication.Screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
-fun BodyHeatmap(
-    muscleLoads: Map<String, Int>
-) {
+fun BodyHeatmap(muscleLoads: Map<String, Int>) {
 
-    val loads = remember(muscleLoads) {
-        muscleLoads.toMap()
-    }
-
-    fun color(load: Int): Color {
+    fun getColor(load: Int): Color {
         return when {
-            load <= 0 -> Color(0xFFE0E0E0)
-            load < 5000 -> Color(0xFFFF6B6B)
-            load < 15000 -> Color(0xFFFFD93D)
-            load < 30000 -> Color(0xFF6BCB77)
-            else -> Color(0xFF4D96FF)
+            load <= 500 -> Color(0xFFD32F2F)   // 🔴 λίγο γυμνασμένο
+            load <= 2000 -> Color(0xFFFFA000)  // 🟠 μέτριο
+            load <= 8000 -> Color(0xFF43A047)  // 🟢 δυνατό
+            else -> Color(0xFF1E88E5)         // 🔵 πολύ δυνατό / max activation
         }
     }
 
-    val rows = listOf(
-        listOf("ώμοι"),
-        listOf("στήθος"),
-        listOf("δικέφαλα", "τρικέφαλα"),
-        listOf("πήχεις"),
-        listOf("κορμός"),
-        listOf("πλάτη"),
-        listOf("τραπεζοειδής"),
-        listOf("πόδια", "γλουτοί")
-    )
+    fun load(m: String) = muscleLoads[m] ?: 0
 
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
 
-        // ================= DEBUG =================
+        MuscleBox("ώμοι", load("ώμοι"), getColor(load("ώμοι")))
 
-        Text(
-            text = "Muscle keys: ${loads.keys.joinToString()}",
-            style = MaterialTheme.typography.labelSmall
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MuscleBox("στήθος", load("στήθος"), getColor(load("στήθος")))
+            MuscleBox("πλάτη", load("πλάτη"), getColor(load("πλάτη")))
+        }
 
-        Text(
-            text = "SIZE: ${muscleLoads.size}",
-            style = MaterialTheme.typography.labelSmall
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MuscleBox("δικέφαλα", load("δικέφαλα"), getColor(load("δικέφαλα")))
+            MuscleBox("τρικέφαλα", load("τρικέφαλα"), getColor(load("τρικέφαλα")))
+        }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        MuscleBox("κορμός", load("κορμός"), getColor(load("κορμός")))
 
-        // ================= HEATMAP =================
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MuscleBox("πόδια", load("πόδια"), getColor(load("πόδια")))
+            MuscleBox("γλουτοί", load("γλουτοί"), getColor(load("γλουτοί")))
+        }
 
-        rows.forEach { row ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MuscleBox("πήχεις", load("πήχεις"), getColor(load("πήχεις")))
+            MuscleBox("τραπεζοειδής", load("τραπεζοειδής"), getColor(load("τραπεζοειδής")))
+        }
+    }
+}
 
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
+// ================= MUSCLE BOX =================
 
-                row.forEachIndexed { index, muscle ->
+@Composable
+fun MuscleBox(
+    name: String,
+    load: Int,
+    color: Color
+) {
 
-                    val load = loads[muscle] ?: 0
+    Box(
+        modifier = Modifier
+            .size(width = 110.dp, height = 55.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.85f)),
+        contentAlignment = Alignment.Center
+    ) {
 
-                    Box(
-                        modifier = Modifier
-                            .width(
-                                if (row.size == 1) 160.dp
-                                else 90.dp
-                            )
-                            .height(50.dp)
-                            .background(
-                                color = color(load),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-                        Text(
-                            text = "$muscle\n$load"
-                        )
-                    }
+            Text(
+                text = name,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
 
-                    if (index != row.lastIndex) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                }
-            }
+            Text(
+                text = load.toString(),
+                fontSize = 11.sp,
+                color = Color.Black.copy(alpha = 0.7f)
+            )
         }
     }
 }
